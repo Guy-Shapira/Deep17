@@ -68,13 +68,29 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
     np.random.seed(seed)
 
     attr, adj, labels = data.prep_graph(dataset, device=device, binary_attr=binary_attr)
+
     n_features = attr.shape[1]
     n_classes = int(labels.max() + 1)
 
-    idx_train, idx_val, idx_test = data.split(labels.cpu().numpy())
+    ########### PREV ###########
+    #idx_train, idx_val, idx_test = data.split(labels.cpu().numpy())
+    ############################
+
+    ########### RGG ###########
+    import sys 
+    import os
+    sys.path.append("../code")
+    from dataset_functions.graph_dataset import GraphDataset
+    idx_train, idx_val, idx_test = GraphDataset._generateMasks(data=None, name=dataset, train_percent=0.1, 
+                                val_percent=0.3,num_nodes=len(labels), num_classes=n_classes, labels=labels,
+                                seed = 5)
+    ###########################
 
     # Collect all hyperparameters of model
     hyperparams = dict(model_params)
+    # print("n features: ", n_features)
+    # print("n classes: ", n_classes)
+    # input("wait")
     hyperparams.update({
         'n_features': n_features,
         'n_classes': n_classes

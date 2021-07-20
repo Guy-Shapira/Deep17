@@ -53,6 +53,53 @@ class Model(torch.nn.Module):
     def getInput(self):
         raise NotImplementedError
 
+class CustomNodeModel(Model): # RGG
+    def __init__(self, gnn_type, num_layers, dataset, device):
+        super(CustomNodeModel, self).__init__(gnn_type, num_layers, dataset, device)
+        self.attack = False
+
+        # Load their model
+    
+        import sys 
+        import os
+        sys.path.append("../reliable_gnn_via_robust_aggregation/rgnn")
+        from models import create_model
+        self.model = create_model({
+            "model": "RGNN",
+            "n_features": 500, # for pubmed
+            "n_classes": 3 
+        })
+     
+        self.name = gnn_type.string()
+        self.num_layers = num_layers
+        self.device = device
+        self.edge_index = dataset.data.edge_index.to(device)
+        self.edge_weight = None
+
+        data = dataset.data
+        node_attribute_list = []
+        for idx in range(data.x.shape[0]):
+            node_attribute_list += [torch.nn.Parameter(data.x[idx].unsqueeze(0), requires_grad=False).to(device)]
+        self.node_attribute_list = node_attribute_list
+
+    def getInput(self):
+        return torch.cat(self.node_attribute_list, dim=0)
+
+    def setNodesAttribute(self, idx_node, idx_attribute, value):
+        self.node_attribute_list[idx_node].data[0][idx_attribute] = value
+
+    def setNodesAttributes(self, idx_node, values):
+        self.node_attribute_list[idx_node].data[0] = values
+
+
+    def forward(self, x=None):
+        if x is None:
+            x = self.getInput().to(self.device)
+
+        y = self.model.forward(x)
+        
+        # return F.log_softmax(y, dim=1).to(self.device)
+        return y
 
 class NodeModel(Model):
     def __init__(self, gnn_type, num_layers, dataset, device):
@@ -67,7 +114,7 @@ class NodeModel(Model):
         return torch.cat(self.node_attribute_list, dim=0)
 
     def setNodesAttribute(self, idx_node, idx_attribute, value):
-        self.node_attribute_list[idx_node][0][idx_attribute] = value
+        self.node_attribute_list[idx_node].data[0][idx_attribute] = value
 
     def setNodesAttributes(self, idx_node, values):
         self.node_attribute_list[idx_node].data[0] = values
@@ -121,10 +168,12 @@ class ModelWrapper(object):
     def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
-        if node_model:
-            self.model = NodeModel(gnn_type, num_layers, dataset, device)
-        else:
-            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+        # if node_model:
+        #     self.model = NodeModel(gnn_type, num_layers, dataset, device)
+        # else:
+        #     self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+        self.model = CustomNodeModel(gnn_type, num_layers, dataset, device)
+
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -161,7 +210,10 @@ class ModelWrapper(object):
         file_name = fileNamer(node_model=self.node_model, dataset_name=dataset.name, model_name=model.name,
                               num_layers=model.num_layers, patience=self.patience, seed=self.seed, targeted=targeted,
                               attack_epochs=attack_epochs, end='.pt')
+
+        file_name = "pretrained_118.pt"
         model_path = osp.join(folder_name, file_name)
+
 
         # load model and optimizer
         if not osp.exists(model_path):
@@ -169,11 +221,12 @@ class ModelWrapper(object):
             model, model_log, test_acc = self.useTrainer(data=dataset.data, attack=attack)
             torch.save((model.state_dict(), model_log, test_acc), model_path)
         else:
-            model_state_dict, model_log, test_acc = torch.load(model_path)
-            model.load_state_dict(model_state_dict)
-            print(model_log + '\n')
-        self.basic_log = model_log
-        self.clean = test_acc
+            model_state_dict = torch.load(model_path)
+            # model_state_dict, model_log, test_acc = torch.load(model_path)
+            model.model.load_state_dict(model_state_dict)
+            # print(model_log + '\n')
+        # self.basic_log = model_log
+        # self.clean = test_acc
 
     def useTrainer(self, data, attack=None):
         return basicTrainer(self.model, self.optimizer, data, self.patience)

@@ -8,6 +8,7 @@ import pickle
 import torch
 from torch_geometric.datasets import Planetoid
 
+import numpy as np
 
 class Masks(NamedTuple):
     train: torch.tensor
@@ -60,10 +61,12 @@ class GraphDataset(object):
         return data
 
     def _setMasks(self, data, name):
-        if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
+        if True:
+        # if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
             self.train_percent = train_percent = 0.1
             self.val_percent = val_percent = 0.3
-            masks = self._generateMasks(data, name, train_percent, val_percent)
+            self.seed = seed = 5 # RGG
+            masks = GraphDataset._generateMasks(data, name, train_percent, val_percent, seed=seed)
         else:
             masks = Masks(data.train_mask, data.val_mask, data.test_mask)
 
@@ -71,18 +74,43 @@ class GraphDataset(object):
         setattr(data, 'val_mask', masks.val)
         setattr(data, 'test_mask', masks.test)
 
-    def _generateMasks(self, data, name, train_percent, val_percent):
-        train_mask = torch.zeros(data.num_nodes).type(torch.bool)
-        val_mask = torch.zeros(data.num_nodes).type(torch.bool)
-        test_mask = torch.zeros(data.num_nodes).type(torch.bool)
+    @staticmethod
+    def _generateMasks(data, name, train_percent, val_percent, num_nodes=None, num_classes=None, labels=None, seed = None):
+        if num_nodes is None:
+            eff_num_nodes = data.num_nodes
+        else:
+            eff_num_nodes = num_nodes
 
+        train_mask = torch.zeros(eff_num_nodes).type(torch.bool)
+        val_mask = torch.zeros(eff_num_nodes).type(torch.bool)
+        test_mask = torch.zeros(eff_num_nodes).type(torch.bool)
+        
+        if num_classes is None:
+            eff_num_classes = data.num_classes
+        else:
+            eff_num_classes = num_classes
+        
+        if labels is None:
+            eff_labels = data.y
+        else:
+            eff_labels = labels
         # taken from Planetoid
-        for c in range(data.num_classes):
-            idx = (data.y == c).nonzero(as_tuple=False).view(-1)
+        for c in range(eff_num_classes):
+            idx = (eff_labels == c).nonzero(as_tuple=False).view(-1)
             num_train_per_class = round(idx.size(0) * train_percent)
             num_val_per_class = round(idx.size(0) * val_percent)
 
+            ############## BEN ###############
             idx_permuted = idx[torch.randperm(idx.size(0))]
+            ##################################
+
+            ############## RGG ###############
+            # if seed is not None:
+            #     np.random.seed(seed)
+                
+            # idx_permuted = torch.Tensor(np.random.permutation(idx.cpu())).long()
+            ##################################
+
             train_idx = idx_permuted[:num_train_per_class]
             val_idx = idx_permuted[num_train_per_class:num_train_per_class + num_val_per_class]
             test_idx = idx_permuted[num_train_per_class + num_val_per_class:]

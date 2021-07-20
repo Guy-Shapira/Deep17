@@ -197,7 +197,7 @@ def findMinimalAttributes(attack, embeded_model, print_answer, node_num, attacke
                                                   value=semi_embedded_row_attribute_value)
             results = test(data=data, model=semi_embedded_model, targeted=attack.targeted,
                            attacked_nodes=attacked_nodes, y_targets=y_targets)
-
+            print(malicious_node, attribute_num)
             if results[3]:
                 tmp_l_inf = 1.0 if dataset.type is DatasetType.DISCRETE else attack.l_inf
                 try:

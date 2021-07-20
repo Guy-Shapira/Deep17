@@ -25,8 +25,10 @@ try:
                                    sources=["kernels/csrc/custom.cpp", "kernels/csrc/custom_kernel.cu"],
                                    extra_cuda_cflags=['-lcusparse', '-l', 'cusparse'],
                                    build_directory=cache_dir)
-except:  # noqa: E722
-    logging.warn('Cuda kernels could not loaded -> no CUDA support!')
+       
+
+except Exception as e:  # noqa: E722
+    logging.warn('Cuda kernels could not loaded -> no CUDA support!' + str(e))
 
 
 @numba.jit(nopython=True)
