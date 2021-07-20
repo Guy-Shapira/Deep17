@@ -22,6 +22,8 @@ def attackSet(attack, approach, print_answer, trainset):
         printAttackHeader(attack=attack, approach=approach)
     num_attacks, nodes_to_attack = getNodesToAttack(data=data, trainset=trainset)
 
+    num_attacks = 5 # Ron
+
     attacked_nodes = np.random.choice(nodes_to_attack, num_attacks, replace=False)
     attacked_nodes = torch.from_numpy(attacked_nodes).to(device)
     y_targets = getClassificationTargets(attack=attack, num_attacks=num_attacks, attacked_nodes=attacked_nodes)

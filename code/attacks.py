@@ -52,6 +52,8 @@ class oneGNNAttack(object):
         self.device = device
 
         self.approaches = args.attMode.getApproaches()
+        self.approaches = self.approaches[:1] # Ron
+
         print(f'######################## STARTING ATTACK ########################')
         self.print_args(args)
 
