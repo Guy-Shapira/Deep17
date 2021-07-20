@@ -70,7 +70,7 @@ class NodeModel(Model):
         self.node_attribute_list[idx_node][0][idx_attribute] = value
 
     def setNodesAttributes(self, idx_node, values):
-        self.node_attribute_list[idx_node][0] = values
+        self.node_attribute_list[idx_node].data[0] = values
 
 
 class EdgeModel(Model):

@@ -162,9 +162,10 @@ def embedRow(model, malicious_nodes, x0, l_inf):
         upper_bound = row0 + l_inf
         lower_bound = row0 - l_inf
 
-        row[row > upper_bound] = upper_bound[row > upper_bound]
-        row[row < lower_bound] = lower_bound[row < lower_bound]
-        row[row < 0] = 0
+        # Ron .data
+        row.data[row > upper_bound] = upper_bound[row > upper_bound]
+        row.data[row < lower_bound] = lower_bound[row < lower_bound]
+        row.data[row < 0] = 0
 
         model.setNodesAttributes(idx_node=malicious_node, values=row)
 
