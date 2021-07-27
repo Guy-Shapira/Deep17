@@ -45,7 +45,8 @@ class AttackMode(Enum):
     def getGNN_TYPES(self):
         if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF or \
                 self is AttackMode.DISTANCE:
-            return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
+            # return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
+            return [GNN_TYPE.GCN]
         elif self is AttackMode.ADVERSARIAL:
             return [GNN_TYPE.GCN]
 

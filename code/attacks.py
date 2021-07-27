@@ -87,7 +87,8 @@ class oneGNNAttack(object):
             tmp_result = self.attackOneApproach(approach)
             results[approach_idx + increment] = tmp_result
 
-        if add_clean:
+        # RGG
+        if False and add_clean:
             results[0] = self.model_wrapper.clean
         return results.unsqueeze(0)
 
@@ -137,6 +138,8 @@ class NodeGNNSAttack(oneGNNAttack):
         header = ['', 'clean'] + approaches
         defence_df = pd.DataFrame(results.to('cpu').numpy())
         defence_df.insert(0, " ", gnns)
+        print("Saving results to: ", self.file_name)
+        print(header)
         defence_df.to_csv(self.file_name, float_format='%.3f', header=header, index=False, na_rep='')
 
     def run(self):

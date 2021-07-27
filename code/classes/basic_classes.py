@@ -49,9 +49,9 @@ class DataSet(Enum):
 
 class GNN_TYPE(Enum):
     GCN = auto()
-    GAT = auto()
-    SAGE = auto()
-    GIN = auto()
+    # GAT = auto()
+    # SAGE = auto()
+    # GIN = auto()
 
     @staticmethod
     def from_string(s):
@@ -63,24 +63,24 @@ class GNN_TYPE(Enum):
     def get_layer(self, in_dim, out_dim):
         if self is GNN_TYPE.GCN:
             return GCNConv(in_channels=in_dim, out_channels=out_dim)
-        elif self is GNN_TYPE.GAT:
-            return ModifiedGATConv(in_channels=in_dim, out_channels=out_dim)
-        elif self is GNN_TYPE.SAGE:
-            return ModifiedSAGEConv(in_channels=in_dim, out_channels=out_dim)
-        elif self is GNN_TYPE.GIN:
-            sequential = nn.Sequential(nn.Linear(in_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU(),
-                                       nn.Linear(out_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU())
-            return ModifiedGINConv(sequential)
+        # elif self is GNN_TYPE.GAT:
+        #     return ModifiedGATConv(in_channels=in_dim, out_channels=out_dim)
+        # elif self is GNN_TYPE.SAGE:
+        #     return ModifiedSAGEConv(in_channels=in_dim, out_channels=out_dim)
+        # elif self is GNN_TYPE.GIN:
+        #     sequential = nn.Sequential(nn.Linear(in_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU(),
+        #                                nn.Linear(out_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU())
+        #     return ModifiedGINConv(sequential)
 
     def string(self):
         if self is GNN_TYPE.GCN:
             return "GCN"
-        elif self is GNN_TYPE.GAT:
-            return "GAT"
-        elif self is GNN_TYPE.SAGE:
-            return "SAGE"
-        elif self is GNN_TYPE.GIN:
-            return "GIN"
+        # elif self is GNN_TYPE.GAT:
+        #     return "GAT"
+        # elif self is GNN_TYPE.SAGE:
+        #     return "SAGE"
+        # elif self is GNN_TYPE.GIN:
+        #     return "GIN"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list):

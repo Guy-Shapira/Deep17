@@ -61,8 +61,8 @@ class GraphDataset(object):
         return data
 
     def _setMasks(self, data, name):
-        if True:
-        # if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
+        # if True:
+        if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
             self.train_percent = train_percent = 0.1
             self.val_percent = val_percent = 0.3
             self.seed = seed = 5 # RGG

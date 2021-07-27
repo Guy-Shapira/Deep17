@@ -137,6 +137,7 @@ class GCN(nn.Module):
                 edge_idx: Optional[torch.Tensor] = None,
                 n: Optional[int] = None,
                 d: Optional[int] = None) -> torch.Tensor:
+        
         x, edge_idx = GCN.parse_forward_input(data, adj, attr_idx, edge_idx, n, d)
 
         # Perform preprocessing such as SVD, GDC or Jaccard

@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import copy
+from torch_geometric.data import Data
 
 
 class Model(torch.nn.Module):
@@ -64,6 +65,7 @@ class CustomNodeModel(Model): # RGG
         import os
         sys.path.append("../reliable_gnn_via_robust_aggregation/rgnn")
         from models import create_model
+        print("This is our model")
         self.model = create_model({
             "model": "RGNN",
             "n_features": 500, # for pubmed
@@ -75,6 +77,7 @@ class CustomNodeModel(Model): # RGG
         self.device = device
         self.edge_index = dataset.data.edge_index.to(device)
         self.edge_weight = None
+        self.model.layers.to(self.device)
 
         data = dataset.data
         node_attribute_list = []
@@ -91,12 +94,13 @@ class CustomNodeModel(Model): # RGG
     def setNodesAttributes(self, idx_node, values):
         self.node_attribute_list[idx_node].data[0] = values
 
-
     def forward(self, x=None):
         if x is None:
             x = self.getInput().to(self.device)
-
-        y = self.model.forward(x)
+        
+        # print("Ben ", x.shape)
+        # print(f" Edge_index {self.edge_index}")
+        y = self.model.forward(Data(x=x, edge_index=self.edge_index))
         
         # return F.log_softmax(y, dim=1).to(self.device)
         return y
