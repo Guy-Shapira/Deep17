@@ -1,6 +1,6 @@
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATConv, GINConv, SAGEConv
 
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Callable
 from torch_geometric.typing import (OptPairTensor, Adj, Size, NoneType,
                                     OptTensor)
 
@@ -62,12 +62,14 @@ class ModifiedGATConv(GATConv):
                 edge_index = set_diag(edge_index)
 
         # propagate_type: (x: OptPairTensor, alpha: OptPairTensor)
-        # This is the modified part:
+
+        # start of modified code #########
         if edge_weight is None:
             edge_weight = torch.ones((edge_index.size(1),), dtype=x.dtype,
                                      device=edge_index.device)
         out = self.propagate(edge_index, x=(x_l, x_r),
                              alpha=(alpha_l, alpha_r), size=size, edge_weight=edge_weight)
+        # end of modified code #########
 
         alpha = self._alpha
         self._alpha = None
@@ -95,9 +97,83 @@ class ModifiedGATConv(GATConv):
                 edge_weight: Tensor) -> Tensor:
         alpha = alpha_j if alpha_i is None else alpha_j + alpha_i
         alpha = F.leaky_relu(alpha, self.negative_slope)
+
         # Adding [-inf, 0] weight to every edge
+
+        # start of modified code #########
         alpha += torch.log(edge_weight).view(-1, 1)
+        # end of modified code #########
+
         alpha = softmax(alpha, index, ptr, size_i)
         self._alpha = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
         return x_j * alpha.unsqueeze(-1)
+
+
+class ModifiedGINConv(GINConv):
+    def __init__(self, nn: Callable, eps: float = 0., train_eps: bool = False,
+                 **kwargs):
+        super(ModifiedGINConv, self).__init__(nn=nn, eps=eps, train_eps=train_eps, **kwargs)
+
+    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
+                edge_weight=None) -> Tensor:
+        """"""
+        if isinstance(x, Tensor):
+            x: OptPairTensor = (x, x)
+
+        # propagate_type: (x: OptPairTensor)
+
+        # start of modified code #########
+        if edge_weight is None:
+            edge_weight = torch.ones((edge_index.size(1),), dtype=x[0].dtype,
+                                     device=edge_index.device)
+        out = self.propagate(edge_index, x=x, size=None, edge_weight=edge_weight)
+        # end of modified code #########
+
+        x_r = x[1]
+        if x_r is not None:
+            out += (1 + self.eps) * x_r
+
+        return self.nn(out)
+
+    def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
+        # start of modified code #########
+        return edge_weight.view(-1, 1) * x_j
+        # end of modified code #########
+
+
+class ModifiedSAGEConv(SAGEConv):
+    def __init__(self, **kwargs):
+        super(ModifiedSAGEConv, self).__init__(**kwargs)
+
+    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
+                size: Size = None, edge_weight=None) -> Tensor:
+        """"""
+        if isinstance(x, Tensor):
+            x: OptPairTensor = (x, x)
+
+        # propagate_type: (x: OptPairTensor)
+
+        # start of modified code #########
+        if edge_weight is None:
+            edge_weight = torch.ones((edge_index.size(1),), dtype=x[0].dtype,
+                                     device=edge_index.device)
+
+        out = self.propagate(edge_index, x=x, size=size, edge_weight=edge_weight)
+        # start of modified code #########
+
+        out = self.lin_l(out)
+
+        x_r = x[1]
+        if x_r is not None:
+            out += self.lin_r(x_r)
+
+        if self.normalize:
+            out = F.normalize(out, p=2., dim=-1)
+
+        return out
+
+    def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
+        # start of modified code #########
+        return edge_weight.view(-1, 1) * x_j
+        # end of modified code #########
