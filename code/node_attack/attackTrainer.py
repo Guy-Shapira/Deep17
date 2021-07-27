@@ -1,8 +1,11 @@
 from classes.basic_classes import Print, DatasetType
-
 import torch
 import torch.nn.functional as F
 import copy
+import wandb
+
+import sys
+sys.path.append("../")
 
 
 # a trainer function that attacks our model by changing the input attribute in 2 steps
@@ -17,12 +20,16 @@ def attackTrainer(attack, approach, model, print_answer, attacked_nodes, y_targe
                   attack_epochs, lr):
     dataset = attack.dataset
     data = dataset.data
-
+    print("RGG inside attackTrainer")
+    print(dataset)
+    print(data)
+    wandb.init(project="RGG", entity="guyshapira")
     log_template = createLogTemplate(attack=attack, first_step=True)
     # changing the parameters which require grads
     optimizer_params, malicious_row_list = setRequiresGrad(model=model, malicious_nodes=malicious_nodes)
 
-    # adversarial optimizer
+    # adversattackTrainer(arial optimizer
+    print("Attack learning rate: {}".format(lr))
     optimizer = torch.optim.Adam(params=optimizer_params, lr=lr)
 
     # setting up discrete gradient flag
@@ -35,10 +42,10 @@ def attackTrainer(attack, approach, model, print_answer, attacked_nodes, y_targe
     x0 = model0.getInput().clone().detach()
     for epoch in range(0, attack_epochs):
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
-              optimizer=optimizer)
+              optimizer=optimizer, wandb=wandb, node_num=node_num)
         results = test(data=data, model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
                        y_targets=y_targets)
-
+        # print("RGG Attack results: {}".format(results))
         # print each epoch
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
@@ -91,7 +98,12 @@ def createLogTemplate(attack, first_step):
 # a helper which turns off the grad for the net layers and turns on the grad for the malicious nodes attributes
 def setRequiresGrad(model, malicious_nodes):
     # zeroing requires grad
-    for layer in model.layers:
+
+    layers_to_change = model.layers
+    if model.layers is None: # RGG very bad patch
+        layers_to_change = model.model.layers
+    # print("attacked layers: ", layers_to_change)
+    for layer in layers_to_change:
         for p in layer.parameters():
             p.detach()
             p.requires_grad = False
@@ -113,7 +125,7 @@ def setRequiresGrad(model, malicious_nodes):
 
 
 # a function which trains the model with the attacked node loss
-def train(model, targeted, attacked_nodes, y_targets, optimizer):
+def train(model, targeted, attacked_nodes, y_targets, optimizer, wandb, node_num):
     model.train()
     optimizer.zero_grad()
 
@@ -123,7 +135,8 @@ def train(model, targeted, attacked_nodes, y_targets, optimizer):
     loss = F.nll_loss(model_output, y_targets)
     loss = loss if targeted else -loss
     loss.backward()
-
+    # print("RGG loss: {} logits: {}".format(loss.item(), model_output))
+    wandb.log({f"loss_{node_num}": loss.item()})
     optimizer.step()
 
 

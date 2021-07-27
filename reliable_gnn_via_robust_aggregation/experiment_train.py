@@ -67,6 +67,8 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+
+
     attr, adj, labels = data.prep_graph(dataset, device=device, binary_attr=binary_attr)
 
     n_features = attr.shape[1]
@@ -81,7 +83,12 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
     import os
     sys.path.append("../code")
     from dataset_functions.graph_dataset import GraphDataset
-    idx_train, idx_val, idx_test = GraphDataset._generateMasks(data=None, name=dataset, train_percent=0.1, 
+    sys.path.append("../")
+    from rgg.utils import loadDataset
+
+    our_data, _, _ = loadDataset(dataset, device)
+
+    idx_train, idx_val, idx_test = GraphDataset._generateMasks(data=our_data, name=dataset, train_percent=0.1, 
                                 val_percent=0.3,num_nodes=len(labels), num_classes=n_classes, labels=labels,
                                 seed = 5)
     ###########################
@@ -113,6 +120,9 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
     storage = Storage(artifact_dir)
     params = dict(dataset=dataset, binary_attr=binary_attr, seed=seed, **hyperparams)
     model_path = storage.save_model(model_storage_type, params, model)
+
+    # RGG
+    torch.save(model.state_dict(), "../models/basic_models/pretrained_118.pt")
 
     return {
         'accuracy': test_accuracy,

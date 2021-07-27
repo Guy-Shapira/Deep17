@@ -22,7 +22,7 @@ def attackSet(attack, approach, print_answer, trainset):
         printAttackHeader(attack=attack, approach=approach)
     num_attacks, nodes_to_attack = getNodesToAttack(data=data, trainset=trainset)
 
-    num_attacks = 5 # Ron
+    num_attacks = 35 # Ron
 
     attacked_nodes = np.random.choice(nodes_to_attack, num_attacks, replace=False)
     attacked_nodes = torch.from_numpy(attacked_nodes).to(device)
@@ -80,7 +80,7 @@ def printAttackHeader(attack, approach):
     targeted_attack_str = 'Targeted' if attack.targeted else 'Untargeted'
     print("######################## " + distance_log + targeted_attack_str + " " + approach.string() + " " +
           attack.model_wrapper.model.name + " Attack ########################", flush=True)
-    info = "######################## Max Attack Epochs:" + str(attack.attack_epochs)
+    info = "#################`####### Max Attack Epochs:" + str(attack.attack_epochs)
     if attack.l_inf is not None:
         info += " Linf:{:.2f}".format(attack.l_inf)
     print(info + " lr:" + str(attack.lr) + " ########################", flush=True)
