@@ -7,11 +7,10 @@ import copy
 
 
 def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor,
-                            malicious_nodes: torch.Tensor, node_num: int) -> torch.Tensor:
+                            malicious_nodes: torch.Tensor, node_num: int, wandb) -> torch.Tensor:
     """
         a trainer function that attacks our model by changing the input attributes
         a successful attack is when we attack successfully AND embed the attributes
-
         Parameters
         ----------
         attack: oneGNNAttack
@@ -19,7 +18,6 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
         y_targets: torch.Tensor - the target labels of the attack
         malicious_nodes: torch.Tensor - the attacker/malicious node
         node_num: int - the index of the attacked/victim node (out of the train/val/test-set)
-
         Returns
         -------
         attack_results: torch.Tensor - 2d-tensor that includes
@@ -50,7 +48,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
     for epoch in range(0, attack_epochs):
         # train
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
-              optimizer=optimizer)
+              optimizer=optimizer, wandb=wandb)
 
         # test correctness
         changed_attributes = (model.getInput() != model0.getInput())[malicious_nodes].sum().item()

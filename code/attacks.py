@@ -1,4 +1,6 @@
-from model_functions.graph_model import Model, ModelWrapper, AdversarialModelWrapper
+import sys
+sys.path.append("../")
+from rgg.rgg_models import Model, ModelWrapper#, AdversarialModelWrapper
 from dataset_functions.graph_dataset import GraphDataset
 from node_attack.attackSet import attackSet, printAttackHeader, getDefenceResultsMean
 from classes.basic_classes import Print, DatasetType, GNN_TYPE

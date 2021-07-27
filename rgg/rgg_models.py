@@ -17,7 +17,7 @@ from model_functions.basicTrainer import basicTrainer
 sys.path.append("../reliable_gnn_via_robust_aggregation/")
 from rgnn.models import create_model
 
-class CustomNodeModel(Model): # RGG
+class CustomNodeModel(NodeModel): # RGG
     def __init__(self, gnn_type, num_layers, dataset, device):
         super(CustomNodeModel, self).__init__(gnn_type, num_layers, dataset, device)
         self.attack = False
@@ -72,12 +72,13 @@ class ModelWrapper(object):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         print("ModelWrapper init")
-        # if node_model:
-        #     self.model = NodeModel(gnn_type, num_layers, dataset, device)
-        # else:
-        #     self.model = EdgeModel(gnn_type, num_layers, dataset, device)
-        self.model = CustomNodeModel(gnn_type, num_layers, dataset, device)
-
+        if node_model:
+            self.model = NodeModel(gnn_type, num_layers, dataset, device)
+        else:
+            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+        # self.model = CustomNodeModel(gnn_type, num_layers, dataset, device)
+        print("self.model is our model")
+        # input("wait")
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -130,18 +131,37 @@ class ModelWrapper(object):
             model, model_log, test_acc = self.useTrainer(data=dataset.data, attack=attack)
             #RGG - to remove!
             if file_name != "fuck_you_ron's_mom":
-                orch.save((model.state_dict(), model_log, test_acc), model_path)
+                torch.save((model.model.state_dict(), model_log, test_acc), model_path)
         else:
             print("Loading model from {}".format(model_path))
             model_state_dict = torch.load(model_path)
             # model_state_dict, model_log, test_acc = torch.load(model_path)
-            if model.layers is None:
-                model.model.load_state_dict(model_state_dict)
-            else:
-                model.load_state_dict(model_state_dict)
+            model.model.load_state_dict(model_state_dict)
             # print(model_log + '\n')
         # self.basic_log = model_log
         # self.clean = test_acc
 
     def useTrainer(self, data, attack=None):
         return basicTrainer(self.model, self.optimizer, data, self.patience)
+
+
+# class AdversarialModelWrapper(ModelWrapper):
+#     """
+#         a wrapper which includes an adversarial model
+#         more information at ModelWrapper
+#     """
+#     def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
+#         super(AdversarialModelWrapper, self).__init__(node_model, gnn_type, num_layers, dataset, patience, device, seed)
+
+#     # override
+#     def _setLR(self):
+#         """
+#             information at the base class ModelWrapper
+#         """
+#         self.lr = 0.005
+
+#     def useTrainer(self, dataset: GraphDataset, attack=None) -> Tuple[Model, str, torch.Tensor]:
+#         """
+#             information at the base class ModelWrapper
+#         """
+#         return adversarialTrainer(attack=attack)

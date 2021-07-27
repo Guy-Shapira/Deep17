@@ -63,6 +63,8 @@ class AttackMode(Enum):
             -------
             approaches: List[Approach]
         """
+        # RGG
+        # return [NodeApproach.INJECTION]
         if self is AttackMode.NODE:
             approaches = [NodeApproach.SINGLE, NodeApproach.INDIRECT, NodeApproach.MULTIPLE_ATTACKERS,
                           NodeApproach.DIRECT, NodeApproach.TOPOLOGY, NodeApproach.GRAD_CHOICE, NodeApproach.AGREE,
@@ -89,7 +91,9 @@ class AttackMode(Enum):
         """
         if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF \
                 or self is AttackMode.ATTRIBUTES or self is AttackMode.DISTANCE or self is AttackMode.MULTIPLE:
-            return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
+            # return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]
+            #RGG
+            return [GNN_TYPE.GCN]
         elif self is AttackMode.ADVERSARIAL:
             return [GNN_TYPE.GCN]
 

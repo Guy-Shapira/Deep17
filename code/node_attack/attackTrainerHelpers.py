@@ -20,6 +20,7 @@ def createLogTemplate(attack, dataset):
         log_end += ', #Att: {:03d}'
     log_end += ', Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
     log = attack.extendLog(log_start, log_end)
+
     return log
 
 
@@ -38,7 +39,11 @@ def setRequiresGrad(model, malicious_nodes: torch.Tensor) -> List[Dict]:
         optimization_params: List[Dict]
     """
     # zeroing requires grad
-    for layer in model.layers:
+    layers_to_take = model.layers
+    if layers_to_take is None:
+        layers_to_take = model.model.layers
+
+    for layer in layers_to_take:
         for p in layer.parameters():
             p.detach()
             p.requires_grad = False
@@ -58,7 +63,7 @@ def setRequiresGrad(model, malicious_nodes: torch.Tensor) -> List[Dict]:
     return [dict(params=malicious_row_list)]
 
 
-def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, optimizer: torch.optim):
+def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, optimizer: torch.optim, node_num:int=0, wandb=None):
     """
         trains the attack for one epoch
 
@@ -83,7 +88,8 @@ def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.
     loss = F.nll_loss(model_output, y_targets)
     loss = loss if targeted else -loss
     loss.backward()
-
+    if wandb is not None:
+        wandb.log({f"loss_{node_num}": loss.item()})
     optimizer.step()
 
     model.eval()

@@ -59,6 +59,8 @@ def test_discrete(model, model0, malicious_nodes: torch.Tensor, changed_attribut
     indices_of_changed_nodes = change_in_nodes.nonzero(as_tuple=True)[0].tolist()
     changed_attributes_test = change_in_nodes.sum()
 
+
+    # RGG 
     assert len(indices_of_changed_nodes) <= malicious_nodes.shape[0], "#perturbed nodes < #malicious nodes"
     assert len(indices_of_changed_nodes) >= 1, "#perturbed nodes is zero"
     assert set(indices_of_changed_nodes) == set(malicious_nodes.tolist()),\
