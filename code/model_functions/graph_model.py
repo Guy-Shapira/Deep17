@@ -172,6 +172,7 @@ class ModelWrapper(object):
     def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
+        print("ModelWrapper init")
         # if node_model:
         #     self.model = NodeModel(gnn_type, num_layers, dataset, device)
         # else:

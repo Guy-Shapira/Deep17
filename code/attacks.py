@@ -291,6 +291,7 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
         self.saveResults(results.unsqueeze(0))
 
     def setModelWrapper(self, gnn_type):
+        print("Inside setModelWrapper")
         if self.Ktrain != 0:
             self.model_wrapper = AdversarialModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
                                                          dataset=self.dataset, patience=self.patience,
