@@ -82,6 +82,7 @@ def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.
     model_output = model()[attacked_nodes]
 
     if torch.sum(model_output - model_output[:y_targets.shape[0], y_targets]) == 0:
+        input("entered")
         model.eval()
         model_output = model()[attacked_nodes]
 
@@ -90,6 +91,9 @@ def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.
     loss.backward()
     if wandb is not None:
         wandb.log({f"loss_{node_num}": loss.item()})
+    # print(optimizer.param_groups)
+
+    # input("wait")
     optimizer.step()
 
     model.eval()

@@ -9,6 +9,11 @@ import torch
 import torch_geometric
 from torch_geometric.datasets import Planetoid
 
+# import sys
+# print(sys.path)
+
+import rgg.utils
+from rgg import utils
 
 class Masks(NamedTuple):
     """
@@ -58,7 +63,48 @@ class GraphDataset(object):
         """
         dataset_path = osp.join(getGitPath(), 'datasets')
         if dataset is DataSet.PUBMED or dataset is DataSet.CORA or dataset is DataSet.CITESEER:
+            
+            print(dataset_path)
+            print(dataset.string())
+            
             dataset = Planetoid(dataset_path, dataset.string())
+
+            # print(dataset)
+            # print(dir(dataset))
+
+            # print(dir(dataset.data))
+            print(dataset.data.to_dict().keys())
+
+            print(dataset.data.to_dict()['x'].shape)
+            # print(dataset.data.to_dict()['x'][0, :])
+            # print(dataset.data.to_dict()['train_mask'])
+            # print(sum(abs(dataset.data.to_dict()['x'][:, 7] - 0.0164) < 0.0001))
+            # input("wait")
+
+            # print(dataset.data.to_dict()['y'].shape)
+            n_vertices = dataset.data.to_dict()['y'].shape[0]
+            # print(n_vertices)
+
+            adj_matrix = torch.zeros((n_vertices, n_vertices))
+            
+            edges = dataset.data.to_dict()['edge_index']
+            print(edges.shape)
+            for e in edges.t():
+                # print(e)
+                # print(adj[e[0], e[1]])
+                # input("e")
+                adj_matrix[e[0], e[1]] = 1
+            # adjacency = [[1 if [i, j] in set(map(tuple, edges)) else 0 for j in range(size)] for i in range(size)]
+
+
+            ### HAVE n_vertices, adj_matrix
+            attr = dataset.data.to_dict()['x']
+            labels = dataset.data.to_dict()['y']
+
+            # (adj_matrix, attr, labels)
+
+
+            # input("wait")
         elif dataset is DataSet.TWITTER:
             twitter_glove_path = osp.join(dataset_path, 'twitter', 'glove.pkl')
             if not osp.exists(twitter_glove_path):
@@ -74,6 +120,9 @@ class GraphDataset(object):
 
         self.num_features = data.num_features
         self.num_classes = dataset.num_classes
+
+        # input("wait-guy")
+
         return data
 
     def _setMasks(self, data: torch_geometric.data.Data, name: str):
@@ -85,12 +134,15 @@ class GraphDataset(object):
             data: torch_geometric.data.Data
             name: str
         """
-        if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
-            self.train_percent = train_percent = 0.1
-            self.val_percent = val_percent = 0.3
-            masks = self._generateMasks(data, name, train_percent, val_percent)
-        else:
-            masks = Masks(data.train_mask, data.val_mask, data.test_mask)
+
+        masks = utils.Get_Masks(data)
+        # if not hasattr(data, 'train_mask') or not hasattr(data, 'val_mask') or not hasattr(data, 'test_mask'):
+        #     self.train_percent = train_percent = 0.1
+        #     self.val_percent = val_percent = 0.3
+        #     masks = self._generateMasks(data, name, train_percent, val_percent)
+        # else:
+        #     masks = utils.Get_Masks(data)
+        #     # masks = Masks(data.train_mask, data.val_mask, data.test_mask)
 
         setattr(data, 'train_mask', masks.train)
         setattr(data, 'val_mask', masks.val)

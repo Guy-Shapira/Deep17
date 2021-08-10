@@ -70,7 +70,13 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
 
 
     attr, adj, labels = data.prep_graph(dataset, device=device, binary_attr=binary_attr)
+    # print(attr.shape)
+    # print(adj.shape)
+    # print(labels.shape)
 
+    # print(attr[0, :])
+    # print(sum(abs(attr[:, 7] - 0.0164) < 0.0001))
+    # input("wait")
     n_features = attr.shape[1]
     n_classes = int(labels.max() + 1)
 
@@ -82,15 +88,18 @@ def run(dataset: str, model_params: Dict[str, Any], train_params: Dict[str, Any]
     import sys 
     import os
     sys.path.append("../code")
-    from dataset_functions.graph_dataset import GraphDataset
     sys.path.append("../")
-    from rgg.utils import loadDataset
+
+    from dataset_functions.graph_dataset import GraphDataset
+    from rgg.utils import loadDataset, Get_Masks
 
     our_data, _, _ = loadDataset(dataset, device)
 
-    idx_train, idx_val, idx_test = GraphDataset._generateMasks(data=our_data, name=dataset, train_percent=0.1, 
-                                val_percent=0.3,num_nodes=len(labels), num_classes=n_classes, labels=labels,
-                                seed = 5)
+    # idx_train, idx_val, idx_test = GraphDataset._generateMasks(data=our_data, name=dataset, train_percent=0.1, 
+    #                             val_percent=0.3,num_nodes=len(labels), num_classes=n_classes, labels=labels,
+    #                             seed = 5)
+
+    idx_train, idx_val, idx_test = Get_Masks(our_data)
     ###########################
 
     # Collect all hyperparameters of model

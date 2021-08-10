@@ -34,6 +34,6 @@ def attackTrainer(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor,
         return attackTrainerContinuous(attack, attacked_nodes, y_targets, malicious_nodes, node_num, wandb)
     elif dataset.type is DatasetType.DISCRETE:
         return attackTrainerDiscrete(attack, attacked_nodes, y_targets, malicious_nodes, node_num,
-                                     discrete_stop_after_1iter)
+                                     discrete_stop_after_1iter, wandb)
     else:
         quit("Unrecognised dataset")

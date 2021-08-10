@@ -2,6 +2,12 @@
 """
 
 from pathlib import Path
+
+import sys
+sys.path.append("../code")
+sys.path.append("../")
+
+from rgg.utils import GetPrepGraph
 from typing import Any, Dict, Iterable, List, Union, Tuple
 import warnings
 
@@ -55,6 +61,7 @@ class SparseGraph:
             class_names: np.ndarray = None,
             metadata: Any = None):
         # Make sure that the dimensions of matrices / arrays all agree
+
         if sp.isspmatrix(adj_matrix):
             adj_matrix = adj_matrix.tocsr().astype(np.float32)
         else:
@@ -261,6 +268,11 @@ class SparseGraph:
         init_dict = {}
         del_entries = []
 
+        # print(data_dict.keys())
+        # input("wait - from flat dict")
+
+        # print(data_dict.keys())
+        # input("wait")
         # Construct sparse matrices
         for key in data_dict.keys():
             if key.endswith('_data') or key.endswith('.data'):
@@ -428,6 +440,7 @@ def load_dataset(name: str,
     path_to_file = directory / (name + ".npz")
     if path_to_file.exists():
         with np.load(path_to_file, allow_pickle=True) as loader:
+            # input(path_to_file)
             loader = dict(loader)
             del loader['type']
             del loader['edge_attr_matrix']
@@ -514,6 +527,7 @@ def split(labels, n_per_class=20, seed=None):
     split_test array-like [n_nodes - 2*n_per_class * nc]
         The indices of the test nodes
     """
+    input("should not get here (split)")
     if seed is not None:
         np.random.seed(seed)
     nc = labels.max() + 1
@@ -556,15 +570,28 @@ def prep_graph(name: str,
     Tuple[SparseGraph, torch.Tensor, torch.Tensor, torch.Tensor]
         unnormalized graph, dense attribute tensor, sparse adjacency matrix (normalized) and labels tensor
     """
+    print(name, device, normalize, binary_attr)
+    print("see params")
+    return GetPrepGraph(name, device)
+
+    print(name)
+    input("wait")
+
     graph = load_dataset(name).standardize(
         make_unweighted=True,
         make_undirected=True,
         no_self_loops=True,
         select_lcc=True
     )
+    # print(dir(graph))
+    # input("wait")
 
+    # n_vertices, adj_matrix, attr, labels
+
+    #RGG - len(data.y) (BEN)
     n_vertices, _ = graph.attr_matrix.shape
 
+    #RGG - ron did it
     adj_matrix = graph.adj_matrix.copy()
     if normalize:
         with warnings.catch_warnings():
@@ -574,9 +601,17 @@ def prep_graph(name: str,
             adj_norm = deg @ adj_matrix @ deg
     else:
         adj_norm = adj_matrix
-
+    #RGG - data.x (BEN)
     attr = torch.FloatTensor(graph.attr_matrix.toarray()).to(device)
     adj = utils.sparse_tensor(adj_norm.tocoo()).to(device)
+
+
+    # print(type(adj))
+    # print(dir(adj))
+
+    # print(adj.to_dense().sum())
+    input("wait2")
+    #RGG - data.y (BEN)
     labels = torch.LongTensor(graph.labels).to(device)
 
     if binary_attr:

@@ -47,6 +47,8 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     attack_results_for_all_attacked_nodes = []
     attack.model_wrapper.model.attack = True
     model0 = copy.deepcopy(attack.model_wrapper.model)
+
+    print("num attacks: {}".format(num_attacks))
     for node_num in range(num_attacks):
         attacked_node = torch.tensor([attacked_nodes[node_num]], dtype=torch.long).to(device)
         y_target = torch.tensor([y_targets[node_num]], dtype=torch.long).to(device)

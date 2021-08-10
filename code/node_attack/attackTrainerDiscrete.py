@@ -7,7 +7,7 @@ import copy
 
 
 def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, malicious_nodes: torch.Tensor,
-                          node_num: int, discrete_stop_after_1iter: bool) -> torch.Tensor:
+                          node_num: int, discrete_stop_after_1iter: bool, wandb) -> torch.Tensor:
     """
         a trainer function that attacks our model by changing the input attribute for a limited number of attributes
         1.attack the model with i attributes
@@ -41,6 +41,9 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
     max_attributes_per_malicious = int(num_attributes * attack.l_0)
     max_attributes = max_attributes_per_malicious * malicious_nodes.shape[0]
 
+
+    attack_epochs = attack.attack_epochs
+
     changed_attributes_all_malicious, epoch = 0, 0
     log_template = createLogTemplate(attack=attack, dataset=dataset)
 
@@ -60,12 +63,15 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
     model0 = copy.deepcopy(model)
     changed_attributes, prev_changed_attributes = 0, 0
     num_attributes_left = max_attributes_per_malicious * torch.ones_like(malicious_nodes).to(attack.device)
-    while True:
-        epoch += 1
+    # while True:
+    #     epoch += 1
+    for epoch in range(0, attack_epochs):
+
         prev_model = copy.deepcopy(model)
         # train
+        #RGG
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
-              optimizer=optimizer)
+              optimizer=optimizer, node_num=node_num, wandb=wandb)
         num_attributes_left = flipUpBestNewAttributes(model=model, model0=prev_model, malicious_nodes=malicious_nodes,
                                                       num_attributes_left=num_attributes_left)
         changed_attributes = max_attributes - num_attributes_left.sum().item()

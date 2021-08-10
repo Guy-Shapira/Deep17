@@ -123,6 +123,7 @@ class ModelWrapper(object):
         file_name = "pretrained_118.pt"
         file_name = "fuck_you_ron's_mom"
         model_path = osp.join(folder_name, file_name)
+        print(model_path)
 
 
         # load model and optimizer
