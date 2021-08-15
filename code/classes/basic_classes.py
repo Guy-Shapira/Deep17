@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from torch import nn
-from typing import List
+from typing import List, Optional, Tuple
 from torch_geometric.nn import GCNConv, SGConv
 from model_functions.modified_gnns import ModifiedGATConv, ModifiedGINConv, ModifiedSAGEConv
 
@@ -51,6 +51,36 @@ class DataSet(Enum):
         elif self is DataSet.CORA or self is DataSet.CITESEER:
             return DatasetType.DISCRETE
 
+    def get_l_inf(self) -> float:
+        """
+            Get the default l_inf
+
+            Returns
+            -------
+            l_inf: float
+        """
+        if self.get_type() is DatasetType.DISCRETE:
+            return 1
+        if self is DataSet.PUBMED:
+            return 0.04
+        if self is DataSet.TWITTER:
+            return 0.001
+
+    def get_l_0(self) -> float:
+        """
+            Get the default l_0
+
+            Returns
+            -------
+            l_0: float
+        """
+        if self.get_type() is DatasetType.DISCRETE:
+            return 0.01
+        if self is DataSet.PUBMED:
+            return 0.05
+        if self is DataSet.TWITTER:
+            return 0.05
+
     def string(self) -> str:
         """
             converts dataset to string
@@ -88,7 +118,7 @@ class GNN_TYPE(Enum):
         except KeyError:
             raise ValueError()
 
-    def get_layer(self, in_dim: int, out_dim: int):
+    def get_layer(self, in_dim: int, out_dim: int, K: Optional[int] = None):
         """
             get the GNN layer
 
@@ -96,6 +126,7 @@ class GNN_TYPE(Enum):
             ----------
             in_dim: int - input dimension
             out_dim: int - output dimension
+            K: int - number of layers for SGC only
 
             Returns
             -------
@@ -112,7 +143,7 @@ class GNN_TYPE(Enum):
                                        nn.Linear(out_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU())
             return ModifiedGINConv(sequential)
         elif self is GNN_TYPE.SGC:
-            return SGConv(in_channels=in_dim, out_channels=out_dim)
+            return SGConv(in_channels=in_dim, out_channels=out_dim, K=K)
 
     def string(self) -> str:
         """

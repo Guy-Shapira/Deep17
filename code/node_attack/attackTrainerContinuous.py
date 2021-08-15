@@ -7,10 +7,11 @@ import copy
 
 
 def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor,
-                            malicious_nodes: torch.Tensor, node_num: int, wandb) -> torch.Tensor:
+                            malicious_nodes: torch.Tensor, node_num: int) -> torch.Tensor:
     """
         a trainer function that attacks our model by changing the input attributes
         a successful attack is when we attack successfully AND embed the attributes
+
         Parameters
         ----------
         attack: oneGNNAttack
@@ -18,6 +19,7 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
         y_targets: torch.Tensor - the target labels of the attack
         malicious_nodes: torch.Tensor - the attacker/malicious node
         node_num: int - the index of the attacked/victim node (out of the train/val/test-set)
+
         Returns
         -------
         attack_results: torch.Tensor - 2d-tensor that includes
@@ -27,13 +29,15 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
     """
     # initialize
     model = attack.model_wrapper.model
-    attack_epochs = attack.attack_epochs
+    continuous_epochs = attack.continuous_epochs
     lr = attack.lr
     print_answer = attack.print_answer
     dataset = attack.getDataset()
     data = dataset.data
 
     num_attributes = data.x.shape[1]
+    l_0_max_attributes_per_malicious = int(num_attributes * attack.l_0)
+    l_0_max_attributes = l_0_max_attributes_per_malicious * malicious_nodes.shape[0]
     max_attributes = num_attributes * malicious_nodes.shape[0]
 
     log_template = createLogTemplate(attack=attack, dataset=dataset)
@@ -44,21 +48,16 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
 
     # find best_attributes
     model0 = copy.deepcopy(model)
-    prev_changed_attributes = 0
-    # input("attack epochs: {}".format(attack_epochs))
-
-    for epoch in range(0, attack_epochs):
+    previous_embeded_model = None
+    model_diff = 1
+    for epoch in range(0, continuous_epochs):
         # train
-
-
-
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
-              optimizer=optimizer, wandb=wandb, node_num=node_num)
+              optimizer=optimizer)
 
         # test correctness
         changed_attributes = (model.getInput() != model0.getInput())[malicious_nodes].sum().item()
-
-        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes,
+        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
                       changed_attributes=changed_attributes, max_attributes=max_attributes)
 
         # test
@@ -71,13 +70,13 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
             embeded_model = copy.deepcopy(model)
             for malicious_idx, malicious_node in enumerate(malicious_nodes):
                 embedRowContinuous(model=embeded_model, malicious_node=malicious_node, model0=model0,
-                                   l_inf=attack.l_inf)
+                                   l_inf=attack.l_inf, l_0=attack.l_0)
 
             # test correctness
             changed_attributes = (embeded_model.getInput() != model0.getInput())[malicious_nodes].sum().item()
-            
             test_continuous(model=embeded_model, model0=model0, malicious_nodes=malicious_nodes,
-                            changed_attributes=changed_attributes, max_attributes=max_attributes, l_inf=attack.l_inf)
+                            attacked_nodes=attacked_nodes, changed_attributes=changed_attributes,
+                            max_attributes=l_0_max_attributes, l_inf=attack.l_inf)
             # test
             results = test(data=data, model=embeded_model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
                            y_targets=y_targets)
@@ -85,18 +84,31 @@ def attackTrainerContinuous(attack, attacked_nodes: torch.Tensor, y_targets: tor
                 if print_answer is Print.YES:
                     print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
                 break
+
+            if previous_embeded_model is not None:
+                model_diff = torch.norm(embeded_model.getInput() - previous_embeded_model.getInput(), p='fro')
+                if model_diff == 0:
+                    break
+            previous_embeded_model = copy.deepcopy(embeded_model)
         # prints
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch + 1, *results[:-1]), flush=True, end='')
-        if changed_attributes == prev_changed_attributes:
-            break
-        prev_changed_attributes = changed_attributes
-
-        if epoch != attack_epochs - 1 and print_answer is not Print.NO:
+        if epoch != continuous_epochs - 1 and print_answer is not Print.NO and model_diff !=0:
             print()
 
     if print_answer is Print.YES:
-        print(', Attack Success: {}\n'.format(results[-1]), flush=True)
+        final_log = ''
+        if results[3]:
+            attr_percent = changed_attributes / (num_attributes * malicious_nodes.shape[0])
+            final_log += ', l_0 used: {:.4f}'.format(attr_percent)
+        final_log += ', Attack Success: {}'.format(results[-1])
+        print(final_log + '\n', flush=True)
     if not results[3]:
         changed_attributes = max_attributes
+
+    if attack.mode.isAdversarial():
+        if results[3]:
+            attack.setModel(embeded_model)
+        else:
+            attack.setModel(model0)
     return torch.tensor([[results[3], changed_attributes]]).type(torch.long)

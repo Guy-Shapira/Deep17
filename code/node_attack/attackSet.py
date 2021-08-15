@@ -33,6 +33,7 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     dataset = attack.getDataset()
     data = dataset.data
     print_answer = attack.print_answer
+    # input("wait")
 
     if print_answer is not Print.NO:
         printAttackHeader(attack=attack, approach=approach)
@@ -42,13 +43,11 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     attacked_nodes = torch.from_numpy(attacked_nodes).to(device)
     y_targets = getClassificationTargets(attack=attack, dataset=dataset, num_attacks=num_attacks,
                                          attacked_nodes=attacked_nodes)
-
+                                
     # chooses a victim node and attacks it using oneNodeAttack
     attack_results_for_all_attacked_nodes = []
     attack.model_wrapper.model.attack = True
     model0 = copy.deepcopy(attack.model_wrapper.model)
-
-    print("num attacks: {}".format(num_attacks))
     for node_num in range(num_attacks):
         attacked_node = torch.tensor([attacked_nodes[node_num]], dtype=torch.long).to(device)
         y_target = torch.tensor([y_targets[node_num]], dtype=torch.long).to(device)
@@ -69,7 +68,7 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
 
         attack_results_for_all_attacked_nodes.append(attack_results.type(torch.long))
         # check if the model is changed in between one node attacks
-        if not attack.mode.isAdversarial():
+        if not (attack.mode.isAdversarial() and trainset):
             attack.setModel(model0)
 
     # print results and save accuracies
@@ -78,10 +77,9 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
         getDefenceResultsMean(attack=attack, approach=approach, attack_results=attack_results_for_all_attacked_nodes)
     attack.model_wrapper.model.attack = False
 
-    if print_answer is Print.YES:
+    if not trainset:
         print("######################## Attack Results ######################## ", flush=True)
         printAttackHeader(attack=attack, approach=approach)
-    if not trainset:
         printAttack(basic_log=attack.model_wrapper.basic_log, mean_defence_results=mean_defence_results,
                     approach=approach, max_attributes=data.x.shape[1] * attack.num_of_attackers)
 
@@ -106,7 +104,9 @@ def printAttackHeader(attack, approach: Approach):
     targeted_attack_str = 'Targeted' if attack.targeted else 'Untargeted'
     print("######################## " + distance_log + targeted_attack_str + " " + approach.string() + " " +
           attack.model_wrapper.model.name + " Attack ########################", flush=True)
-    info = "######################## Max Attack Epochs:" + str(attack.attack_epochs)
+    info = "########################"
+    if attack.dataset_type is DatasetType.CONTINUOUS:
+        info += " Max Attack Epochs:" + str(attack.continuous_epochs)
     if approach.isMultiple():
         info += " Attackers:{}".format(attack.num_of_attackers)
 
@@ -114,9 +114,8 @@ def printAttackHeader(attack, approach: Approach):
         if attack.l_inf is not None:
             info += " Linf:{:.2f}".format(attack.l_inf)
 
-    if attack.getDataset().type is DatasetType.DISCRETE:
-        if attack.l_0 is not None:
-            info += " l_0:{:.2f}".format(attack.l_0)
+    if attack.l_0 is not None:
+        info += " l_0:{:.2f}".format(attack.l_0)
 
     info += " lr:" + str(attack.lr)
     print(info + " ########################", flush=True)
@@ -193,17 +192,17 @@ def getDefenceResultsMean(attack, approach: Approach, attack_results: torch.Tens
                                              2nd-col - the number of attributes used
         if the number of attributes is 0 the node is misclassified to begin with
     """
-    max_attributes = attack.getDataset().data.x.shape[1] * attack.num_of_attackers
     attack_results = attack_results.type(torch.FloatTensor)
-    mask = attack_results[:, 0] == 1
+    mask_attack_success = attack_results[:, 0] == 1
 
-    defence_or_attack = mask.sum().type(torch.FloatTensor) / attack_results.shape[0]
-    mean_attributes = attack_results[mask, 1].mean(dim=0)
-    mean_defence_results = torch.tensor([defence_or_attack, mean_attributes])
-
+    mean_attack_success = mask_attack_success.sum().type(torch.FloatTensor) / attack_results.shape[0]
     if approach is not NodeApproach.AGREE and not attack.targeted:
-        mean_defence_results[0] = 1 - mean_defence_results[0]
-    return mean_defence_results
+        mean_attack_success = 1 - mean_attack_success
+
+    mask_attributes_no_misclassification = torch.logical_and(mask_attack_success, attack_results[:, 1] != 0)
+    mean_attributes = attack_results[mask_attributes_no_misclassification, 1].mean(dim=0)
+
+    return torch.tensor([mean_attack_success, mean_attributes])
 
 
 def printAttack(basic_log: str, mean_defence_results: torch.Tensor, approach: Approach, max_attributes: int):
@@ -231,7 +230,7 @@ def printAttack(basic_log: str, mean_defence_results: torch.Tensor, approach: Ap
         attack_log = attack_log.format(mean_defence_results[0].item())
 
         num_of_attack_attributes = mean_defence_results[1].item()
-        mus = tuple([num_of_attack_attributes] + [100 * num_of_attack_attributes / max_attributes])
-        attack_log += '#Success attack attributes: {:.1f}, #Success attack attributes%: {:.3f}\n'.format(*mus)
+        mus = tuple([num_of_attack_attributes] + [num_of_attack_attributes / max_attributes])
+        attack_log += '#Success attack attributes: {:.1f}, #Success attack l_0: {:.3f}\n'.format(*mus)
 
     print(attack_log, flush=True)

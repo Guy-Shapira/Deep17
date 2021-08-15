@@ -20,7 +20,6 @@ def createLogTemplate(attack, dataset):
         log_end += ', #Att: {:03d}'
     log_end += ', Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
     log = attack.extendLog(log_start, log_end)
-
     return log
 
 
@@ -39,11 +38,7 @@ def setRequiresGrad(model, malicious_nodes: torch.Tensor) -> List[Dict]:
         optimization_params: List[Dict]
     """
     # zeroing requires grad
-    layers_to_take = model.layers
-    if layers_to_take is None:
-        layers_to_take = model.model.layers
-
-    for layer in layers_to_take:
+    for layer in model.layers:
         for p in layer.parameters():
             p.detach()
             p.requires_grad = False
@@ -63,7 +58,7 @@ def setRequiresGrad(model, malicious_nodes: torch.Tensor) -> List[Dict]:
     return [dict(params=malicious_row_list)]
 
 
-def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, optimizer: torch.optim, node_num:int=0, wandb=None):
+def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, optimizer: torch.optim):
     """
         trains the attack for one epoch
 
@@ -82,18 +77,13 @@ def train(model, targeted: bool, attacked_nodes: torch.Tensor, y_targets: torch.
     model_output = model()[attacked_nodes]
 
     if torch.sum(model_output - model_output[:y_targets.shape[0], y_targets]) == 0:
-        input("entered")
         model.eval()
         model_output = model()[attacked_nodes]
 
     loss = F.nll_loss(model_output, y_targets)
     loss = loss if targeted else -loss
     loss.backward()
-    if wandb is not None:
-        wandb.log({f"loss_{node_num}": loss.item()})
-    # print(optimizer.param_groups)
 
-    # input("wait")
     optimizer.step()
 
     model.eval()
@@ -160,10 +150,18 @@ def model_res2targets_acc(targeted: bool, y_targets: torch.Tensor, model_res: to
     pred_val, pred = model_res.max(1)
 
     # edge case where more than one of the classes has the same prob
-    max_pred = (model_res == pred_val)
-    if max_pred.sum() > 1 and max_pred[range(0, y_targets.shape[0]), y_targets]:
-        return True
-
+    diff_prob_mat = (model_res.T - pred_val).T
+    same_prob_vec = (diff_prob_mat == 0).sum(1)
+    edge_case_vec = torch.logical_and(same_prob_vec > 1,
+                                      diff_prob_mat[range(0, y_targets.shape[0]), y_targets] == 0)
+    if targeted:
+        pred[edge_case_vec] = y_targets[edge_case_vec]
+    else:
+        for node_idx in range(model_res.shape[0]):
+            for class_idx in range(model_res.shape[1]):
+                if model_res[node_idx, class_idx] == pred_val[node_idx] and class_idx != y_targets[node_idx]:
+                    pred[node_idx] = class_idx
+    # end of edge case
 
     if y_targets.shape[0] == 1:
         y_targets_acc = (pred == y_targets)
@@ -224,16 +222,24 @@ def flipUpBestNewAttributes(model, model0, malicious_nodes: torch.Tensor, num_at
 
 # embed the attribute row and limits the inf norm, only for continuous datasets
 @torch.no_grad()
-def embedRowContinuous(model, malicious_node, model0, l_inf):
+def embedRowContinuous(model, malicious_node, model0, l_inf, l_0):
     row0 = model0.node_attribute_list[malicious_node][0]
     row = model.node_attribute_list[malicious_node][0]
+    final_row = row0.clone()
+    k = int(l_0 * row0.shape[0])
 
+    # limiting number of attributes
+    row[row < 0] = 0
+    abs_diff = (row - row0).abs()
+    largest_diff_indices = torch.topk(abs_diff, k=k)[1]
+    final_row[largest_diff_indices] = row[largest_diff_indices]
+
+    # limiting the amplitude of attributes
     upper_bound = row0 + l_inf
     lower_bound = row0 - l_inf
 
-    row[row > upper_bound] = upper_bound[row > upper_bound]
-    row[row < lower_bound] = lower_bound[row < lower_bound]
-    row[row < 0] = 0
+    final_row[final_row > upper_bound] = upper_bound[final_row > upper_bound]
+    final_row[final_row < lower_bound] = lower_bound[final_row < lower_bound]
+    final_row[final_row < 0] = 0
 
-    model.setNodesAttributes(idx_node=malicious_node, values=row)
-    return row, row0
+    model.setNodesAttributes(idx_node=malicious_node, values=final_row)

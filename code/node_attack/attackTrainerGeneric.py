@@ -3,7 +3,6 @@ from node_attack.attackTrainerContinuous import attackTrainerContinuous
 from node_attack.attackTrainerDiscrete import attackTrainerDiscrete
 
 import torch
-import wandb
 
 
 def attackTrainer(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, malicious_nodes: torch.Tensor,
@@ -29,11 +28,10 @@ def attackTrainer(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor,
         if the number of attributes is 0 the node is misclassified to begin with
     """
     dataset = attack.getDataset()
-    wandb.init(project='RGG', entity='guyshapira')
     if dataset.type is DatasetType.CONTINUOUS:
-        return attackTrainerContinuous(attack, attacked_nodes, y_targets, malicious_nodes, node_num, wandb)
+        return attackTrainerContinuous(attack, attacked_nodes, y_targets, malicious_nodes, node_num)
     elif dataset.type is DatasetType.DISCRETE:
         return attackTrainerDiscrete(attack, attacked_nodes, y_targets, malicious_nodes, node_num,
-                                     discrete_stop_after_1iter, wandb)
+                                     discrete_stop_after_1iter)
     else:
         quit("Unrecognised dataset")

@@ -7,7 +7,7 @@ import copy
 
 
 def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch.Tensor, malicious_nodes: torch.Tensor,
-                          node_num: int, discrete_stop_after_1iter: bool, wandb) -> torch.Tensor:
+                          node_num: int, discrete_stop_after_1iter: bool) -> torch.Tensor:
     """
         a trainer function that attacks our model by changing the input attribute for a limited number of attributes
         1.attack the model with i attributes
@@ -37,12 +37,10 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
     print_answer = attack.print_answer
     dataset = attack.getDataset()
     data = dataset.data
+
     num_attributes = data.x.shape[1]
-    max_attributes_per_malicious = int(num_attributes * attack.l_0)
-    max_attributes = max_attributes_per_malicious * malicious_nodes.shape[0]
-
-
-    attack_epochs = attack.attack_epochs
+    l_0_max_attributes_per_malicious = int(num_attributes * attack.l_0)
+    limited_max_attributes = l_0_max_attributes_per_malicious * malicious_nodes.shape[0]
 
     changed_attributes_all_malicious, epoch = 0, 0
     log_template = createLogTemplate(attack=attack, dataset=dataset)
@@ -62,23 +60,20 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
     # flip the attribute with the largest gradient
     model0 = copy.deepcopy(model)
     changed_attributes, prev_changed_attributes = 0, 0
-    num_attributes_left = max_attributes_per_malicious * torch.ones_like(malicious_nodes).to(attack.device)
-    # while True:
-    #     epoch += 1
-    for epoch in range(0, attack_epochs):
-
+    num_attributes_left = l_0_max_attributes_per_malicious * torch.ones_like(malicious_nodes).to(attack.device)
+    while True:
+        epoch += 1
         prev_model = copy.deepcopy(model)
         # train
-        #RGG
         train(model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes, y_targets=y_targets,
-              optimizer=optimizer, node_num=node_num, wandb=wandb)
+              optimizer=optimizer)
         num_attributes_left = flipUpBestNewAttributes(model=model, model0=prev_model, malicious_nodes=malicious_nodes,
                                                       num_attributes_left=num_attributes_left)
-        changed_attributes = max_attributes - num_attributes_left.sum().item()
+        changed_attributes = limited_max_attributes - num_attributes_left.sum().item()
 
         # test correctness
-        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes,
-                      changed_attributes=changed_attributes, max_attributes=max_attributes)
+        test_discrete(model=model, model0=model0, malicious_nodes=malicious_nodes, attacked_nodes=attacked_nodes,
+                      changed_attributes=changed_attributes, max_attributes=limited_max_attributes)
 
         # test
         results = test(data=data, model=model, targeted=attack.targeted, attacked_nodes=attacked_nodes,
@@ -90,15 +85,20 @@ def attackTrainerDiscrete(attack, attacked_nodes: torch.Tensor, y_targets: torch
         if print_answer is Print.YES:
             print(log_template.format(node_num, epoch, changed_attributes, *results[:-1]), flush=True, end='')
         # breaks
-        if results[3] or changed_attributes == max_attributes or changed_attributes == prev_changed_attributes:
+        if results[3] or changed_attributes == limited_max_attributes or changed_attributes == prev_changed_attributes:
             break
         prev_changed_attributes = changed_attributes
         if discrete_stop_after_1iter:
             break
 
     if print_answer is Print.YES:
-        print(', Attack Success: {}\n'.format(results[-1]), flush=True)
-    if changed_attributes > max_attributes:
-        return torch.tensor([[results[3], max_attributes]]).type(torch.long)
+        final_log = ''
+        if results[3]:
+            attr_percent = changed_attributes / (num_attributes * malicious_nodes.shape[0])
+            final_log += ', l_0 used: {:.4f}'.format(attr_percent)
+        final_log += ', Attack Success: {}'.format(results[-1])
+        print(final_log + '\n', flush=True)
+    if changed_attributes > limited_max_attributes:
+        return torch.tensor([[results[3], limited_max_attributes]]).type(torch.long)
     else:
         return torch.tensor([[results[3], changed_attributes]]).type(torch.long)

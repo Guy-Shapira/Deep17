@@ -211,7 +211,7 @@ def setRequiresGrad(model):
         optimization_params: List[Dict]
     """
     # specifying layer parameters
-    for layer in model.model.layers:
+    for layer in model.layers:
         for p in layer.parameters():
             p.detach()
             p.requires_grad = False

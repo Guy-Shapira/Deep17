@@ -22,6 +22,7 @@ class Model(torch.nn.Module):
     """
         Generic model class
         each gnn sets a different model
+
         Parameters
         ----------
         gnn_type: GNN_TYPE
@@ -46,8 +47,12 @@ class Model(torch.nn.Module):
         all_channels = [num_initial_features] + hidden_dims + [num_final_features]
 
         # gnn layers
-        for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
-            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel).to(device))
+        if gnn_type is GNN_TYPE.SGC:
+            self.layers.append(gnn_type.get_layer(in_dim=num_initial_features, out_dim=num_final_features,
+                                                  K=num_layers).to(device))
+        else:
+            for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
+                self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel).to(device))
 
         self.name = gnn_type.string()
         self.num_layers = num_layers
@@ -71,6 +76,7 @@ class Model(torch.nn.Module):
     def getInput(self) -> torch.Tensor:
         """
             a get function for the models input
+
             Returns
             ----------
             model_input: torch.Tensor
@@ -80,10 +86,12 @@ class Model(torch.nn.Module):
     def injectNode(self, dataset: GraphDataset, attacked_node: torch.Tensor) -> torch.Tensor:
         """
             injects a node to the model
+
             Parameters
             ----------
             dataset: GraphDataset
             attacked_node: torch.Tensor - the victim/attacked node
+
             Returns
             -------
             malicious_node: torch.Tensor - the injected/attacker/malicious node
@@ -94,6 +102,7 @@ class Model(torch.nn.Module):
     def removeInjectedNode(self, attack):
         """
             removes the injected node from the model
+
             Parameters
             ----------
             attack: oneGNNAttack
@@ -120,6 +129,7 @@ class NodeModel(Model):
     def setNodesAttribute(self, idx_node: torch.Tensor, idx_attribute: torch.Tensor, value: float):
         """
             sets a value for a specific node's specific attribute in the node_attribute_list
+
             Parameters
             ----------
             idx_node: torch.Tensor - the specific node
@@ -131,6 +141,7 @@ class NodeModel(Model):
     def setNodesAttributes(self, idx_node: torch.Tensor, values: torch.Tensor):
         """
             sets the attributes for a specific node in the node_attribute_list
+
             Parameters
             ----------
             idx_node: torch.Tensor - the specific node
@@ -206,6 +217,7 @@ class EdgeModel(Model):
                                device: torch.cuda) -> torch.Tensor:
         """
             adds edges with zero weights to the malicious/attacker node according to the attack approach
+
             Parameters
             ----------
             dataset: GraphDataset
@@ -214,6 +226,7 @@ class EdgeModel(Model):
                                        1st-col - the nodes that are in the victim nodes BFS neighborhood
                                        2nd-col - the distance of said nodes from the victim node
             device: torch.cuda
+
             Returns
             ----------
             malicious_index: torch.Tensor - the injected/attacker/malicious node index
@@ -256,6 +269,7 @@ class EdgeModel(Model):
 class ModelWrapper(object):
     """
         a wrapper which includes the model and its generic functions
+
         Parameters
         ----------
         node_model: bool - whether or not this is a node-based-model
@@ -307,6 +321,7 @@ class ModelWrapper(object):
     def setModel(self, model: Model):
         """
             sets a specific model
+
             Parameters
             ----------
             model: Model
@@ -316,6 +331,7 @@ class ModelWrapper(object):
     def train(self, dataset: GraphDataset, attack=None):
         """
             prepare for train
+
             Parameters
             ----------
             dataset: GraphDataset
@@ -325,14 +341,14 @@ class ModelWrapper(object):
         folder_name = osp.join(getGitPath(), 'models')
         if attack is None:
             folder_name = osp.join(folder_name, 'basic_models')
-            targeted, attack_epochs = None, None
+            targeted, continuous_epochs = None, None
         else:
             folder_name = osp.join(folder_name, 'adversarial_models')
-            targeted, attack_epochs = attack.targeted, attack.attack_epochs
+            targeted, continuous_epochs = attack.targeted, attack.continuous_epochs
 
         file_name = fileNamer(node_model=self.node_model, dataset_name=dataset.name, model_name=model.name,
                               num_layers=model.num_layers, patience=self.patience, seed=self.seed, targeted=targeted,
-                              attack_epochs=attack_epochs, end='.pt')
+                              continuous_epochs=continuous_epochs, end='.pt')
         model_path = osp.join(folder_name, file_name)
 
         # load model and optimizer
@@ -350,10 +366,12 @@ class ModelWrapper(object):
     def useTrainer(self, dataset: GraphDataset, attack=None) -> Tuple[Model, str, torch.Tensor]:
         """
             trains the model
+
             Parameters
             ----------
             dataset: GraphDataset
             attack: oneGNNAttack
+
             Returns
             -------
             model: Model
