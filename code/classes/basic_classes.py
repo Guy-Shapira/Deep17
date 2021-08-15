@@ -1,8 +1,13 @@
 from enum import Enum, auto
 from torch import nn
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from torch_geometric.nn import GCNConv, SGConv
+
 from model_functions.modified_gnns import ModifiedGATConv, ModifiedGINConv, ModifiedSAGEConv
+from model_functions.robust_gcn import RobustGCNModel
+from model_functions.modified_rgnn import RGNNModel
+
+from model_functions.gal.gal_model import GalModel
 
 
 class Print(Enum):
@@ -110,6 +115,9 @@ class GNN_TYPE(Enum):
 
     ROBUST_GCN = auto()
     SGC = auto()
+    RGNN = auto()
+
+    GAL = auto()
 
     @staticmethod
     def from_string(s):
@@ -117,6 +125,12 @@ class GNN_TYPE(Enum):
             return GNN_TYPE[s]
         except KeyError:
             raise ValueError()
+
+    def is_robust_model(self) -> bool:
+        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN or self is GNN_TYPE.GAL:
+            return True
+        else:
+            return False
 
     def get_layer(self, in_dim: int, out_dim: int, K: Optional[int] = None):
         """
@@ -144,6 +158,16 @@ class GNN_TYPE(Enum):
             return ModifiedGINConv(sequential)
         elif self is GNN_TYPE.SGC:
             return SGConv(in_channels=in_dim, out_channels=out_dim, K=K)
+        else:
+            exit(self.string() + " can not use this method")
+
+    def get_model(self, dataset, device, num_layers=None):
+        if self is GNN_TYPE.ROBUST_GCN:
+            return RobustGCNModel(num_layers=num_layers, dataset=dataset, device=device)
+        elif self is GNN_TYPE.RGNN:
+            return RGNNModel(dataset=dataset, device=device)
+        elif self is GNN_TYPE.GAL:
+            return GalModel(dataset=dataset, device=device)
 
     def string(self) -> str:
         """
@@ -165,6 +189,10 @@ class GNN_TYPE(Enum):
             return "ROBUST_GCN"
         elif self is GNN_TYPE.SGC:
             return "SGC"
+        elif self is GNN_TYPE.RGNN:
+            return "RGNN"
+        elif self is GNN_TYPE.GAL:
+            return "GAL"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list) -> List[str]:

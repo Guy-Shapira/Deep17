@@ -33,7 +33,6 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     dataset = attack.getDataset()
     data = dataset.data
     print_answer = attack.print_answer
-    # input("wait")
 
     if print_answer is not Print.NO:
         printAttackHeader(attack=attack, approach=approach)
@@ -43,7 +42,7 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
     attacked_nodes = torch.from_numpy(attacked_nodes).to(device)
     y_targets = getClassificationTargets(attack=attack, dataset=dataset, num_attacks=num_attacks,
                                          attacked_nodes=attacked_nodes)
-                                
+
     # chooses a victim node and attacks it using oneNodeAttack
     attack_results_for_all_attacked_nodes = []
     attack.model_wrapper.model.attack = True

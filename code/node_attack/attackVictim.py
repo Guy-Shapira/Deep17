@@ -35,6 +35,7 @@ def attackVictim(attack, approach: Approach, attacked_node: torch.Tensor, y_targ
     device = attack.device
     dataset = attack.getDataset()
     print_answer = attack.print_answer
+
     neighbours_and_dist = kBFS(root=attacked_node, device=device, reversed_arr_list=dataset.reversed_arr_list,
                                K=attack.num_layers)
     if neighbours_and_dist.nelement():

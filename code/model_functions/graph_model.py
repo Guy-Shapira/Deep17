@@ -17,6 +17,8 @@ from torch.nn import functional as F
 import copy
 import numpy as np
 
+from model_functions.gal.gal_trainer import galTrainer
+
 
 class Model(torch.nn.Module):
     """
@@ -285,12 +287,12 @@ class ModelWrapper(object):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         if node_model:
-            if gnn_type is GNN_TYPE.ROBUST_GCN:
-                self.model = RobustGCNModel(num_layers, dataset, device)
+            if gnn_type.is_robust_model():
+                self.model = gnn_type.get_model(dataset=dataset, device=device, num_layers=num_layers)
             else:
-                self.model = NodeModel(gnn_type, num_layers, dataset, device)
+                self.model = NodeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         else:
-            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+            self.model = EdgeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -391,6 +393,9 @@ class ModelWrapper(object):
             model_log = 'Basic Model - Train: {:.4f}, Val: {:.4f}, Test: {:.4f}' \
                 .format(train_accuracy, val_accuracy, test_accuracy)
             return self.model, model_log, test_accuracy
+        elif self.gnn_type == GNN_TYPE.GAL: #RGG
+            return galTrainer(self.model, data, self.patience)
+            
 
         return basicTrainer(self.model, self.optimizer, data, self.patience)
 
