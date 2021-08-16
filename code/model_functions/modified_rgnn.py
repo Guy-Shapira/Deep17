@@ -37,6 +37,14 @@ class RGNNModel(RGNN):
     def setNodesAttributes(self, idx_node, values):
         self.node_attribute_list[idx_node][0] = values
 
+    def is_zero_grad(self) -> bool:
+        nodes_with_gradient = filter(lambda node: node.grad is not None, self.node_attribute_list)
+        abs_gradients = map(lambda node: node.grad.abs().sum().item(), nodes_with_gradient)
+        if reduce(lambda x, y: x + y, abs_gradients) == 0:
+            return True
+        else:
+            return False
+
     def forward(self, input=None):
         if input is None:
             input = self.getInput().to(self.device)

@@ -6,7 +6,6 @@ from torch_geometric.nn import GCNConv, SGConv
 from model_functions.modified_gnns import ModifiedGATConv, ModifiedGINConv, ModifiedSAGEConv
 from model_functions.robust_gcn import RobustGCNModel
 from model_functions.modified_rgnn import RGNNModel
-
 from model_functions.gal.gal_model import GalModel
 
 
@@ -116,7 +115,6 @@ class GNN_TYPE(Enum):
     ROBUST_GCN = auto()
     SGC = auto()
     RGNN = auto()
-
     GAL = auto()
 
     @staticmethod

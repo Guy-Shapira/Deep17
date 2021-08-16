@@ -1,9 +1,9 @@
 import torch
 from torch_geometric.nn import GCNConv
 import torch.nn.functional as F
-
+from functools import reduce
 from torch_geometric.utils import train_test_split_edges
-
+from torch_geometric.nn import GCNConv, ChebConv, GINConv, GATConv
 torch.autograd.set_detect_anomaly(True)
 
 class GradReverse(torch.autograd.Function):
@@ -28,16 +28,22 @@ class GradientReversalLayer(torch.nn.Module):
 
 
 class GalModel(torch.nn.Module):
-    def __init__(self, dataset, device):
+    def __init__(self, dataset, device, name='GATConv'):
         super(GalModel, self).__init__()
+        self.dataset_name = dataset.name
+        if (name == 'GCNConv'):
+            self.conv1 = GCNConv(dataset.num_features, 128).to(device)
+            self.conv2 = GCNConv(128, 64).to(device)
+        elif (name == 'GATConv'):
+            self.conv1 = GATConv(dataset.num_features, 128).to(device)
+            self.conv2 = GATConv(128, 64).to(device)
 
-        self.conv1 = GCNConv(dataset.num_features, 64).to(device)
-        self.conv2 = GCNConv(64, 64).to(device)
-        self.conv3 = GCNConv(64, 64).to(device)
 
-        # for _setOptimizer, but not important what's inside
-        # since we ignore _setOptimizer's actions and override it
-        self.layers = torch.nn.ModuleList([self.conv1, self.conv2, self.conv3])
+        # self.conv1 = GCNConv(dataset.num_features, 64).to(device)
+        # self.conv2 = GCNConv(64, 64).to(device)
+        # self.conv3 = GCNConv(64, 64).to(device)
+
+        self.layers = torch.nn.ModuleList([self.conv1, self.conv2])
         self.num_layers = len(self.layers)
 
 
@@ -74,15 +80,25 @@ class GalModel(torch.nn.Module):
         self.labels = data.y.to(self.device)
 
 
+    def is_zero_grad(self) -> bool:
+        nodes_with_gradient = filter(lambda node: node.grad is not None, self.node_attribute_list)
+        abs_gradients = map(lambda node: node.grad.abs().sum().item(), nodes_with_gradient)
+        if reduce(lambda x, y: x + y, abs_gradients) == 0:
+            return True
+        else:
+            return False
+
     def forward(self, pos_edge_index=None, neg_edge_index=None, input=None):
 
         if input is None:
             input = self.getInput().to(self.device)
         x = torch.matmul(input, self.glove_matrix).to(self.device)
 
+        # x = F.relu(self.conv1(x, self.edge_index))
+        # x = self.conv2(x, self.edge_index)
+        # x = self.conv3(x, self.edge_index)
         x = F.relu(self.conv1(x, self.edge_index))
         x = self.conv2(x, self.edge_index)
-        x = self.conv3(x, self.edge_index)
 
         feat = x
         attr = self.attr(x, self.edge_index)
@@ -101,31 +117,6 @@ class GalModel(torch.nn.Module):
 
             return res, F.log_softmax(attr, dim=1), att, feat        
 
-
-
-    # def forward(self, pos_edge_index, neg_edge_index, input=None):
-
-    #     if input is None:
-    #         input = self.getInput().to(self.device)
-    #     x = torch.matmul(input, self.glove_matrix).to(self.device)
-
-    #     x = F.relu(self.conv1(x, self.edge_index))
-    #     x = self.conv2(x, self.edge_index)
-    #     x = self.conv3(x, self.edge_index)
-
-    #     feat = x
-    #     attr = self.attr(x, self.edge_index)
-
-    #     attack = self.reverse(x)
-    #     att = self.attk(attack, self.edge_index)
-
-    #     total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
-
-    #     x_j = torch.index_select(x, 0, total_edge_index[0])
-    #     x_i = torch.index_select(x, 0, total_edge_index[1])
-    #     res = torch.einsum("ef,ef->e", x_i, x_j)
-
-    #     return res, F.log_softmax(attr, dim=1), att, feat
 
     def getInput(self):
         return torch.cat(self.node_attribute_list, dim=0)
