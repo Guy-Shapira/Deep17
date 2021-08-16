@@ -62,7 +62,7 @@ def sim(lambda_reg, seed):
             self.attr = GCNConv(64, dataset.num_classes, cached=True,
                                     normalize=not gdc)
 
-            self.attack = GCNConv(64, dataset.num_classes, cached=True,
+            self.attk = GCNConv(64, dataset.num_classes, cached=True,
                                 normalize=not gdc)
             self.reverse = GradientReversalLayer()
 
@@ -90,7 +90,7 @@ def sim(lambda_reg, seed):
 
             #print(feat.size())
             attack = self.reverse(x)
-            att = self.attack(attack, edge_index, edge_weight)
+            att = self.attk(attack, edge_index, edge_weight)
 
             total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
             
@@ -165,7 +165,7 @@ def sim(lambda_reg, seed):
     optimizer_att = torch.optim.Adam([
         dict(params=model.conv2.parameters(), weight_decay=5e-4),   
         dict(params=model.conv3.parameters(), weight_decay=5e-4),   
-        dict(params=model.attack.parameters(), weight_decay=5e-4),
+        dict(params=model.attk.parameters(), weight_decay=5e-4),
     ], lr=lr * lambda_reg)
 
     def get_link_labels(pos_edge_index, neg_edge_index):
@@ -213,7 +213,7 @@ def sim(lambda_reg, seed):
             optimizer_att.step()
             switch = True
             
-            for p in model.attack.parameters():
+            for p in model.attk.parameters():
                 p.data.clamp_(-1, 1)
                 
         return loss

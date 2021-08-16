@@ -43,10 +43,13 @@ class GalModel(torch.nn.Module):
 
         self.attr = GCNConv(64, dataset.num_classes, cached=True,
                                 normalize=True).to(device)
-        self.attack = GCNConv(64, dataset.num_classes, cached=True,
+        self.attk = GCNConv(64, dataset.num_classes, cached=True,
                             normalize=True).to(device)
         self.reverse = GradientReversalLayer().to(device)
 
+
+        # Ben's attack att
+        self.attack = True
 
         # start of changes XXXXX
         
@@ -69,10 +72,9 @@ class GalModel(torch.nn.Module):
         self.node_attribute_list = node_attribute_list
 
         self.labels = data.y.to(self.device)
-            
 
 
-    def forward(self, pos_edge_index, neg_edge_index, input=None):
+    def forward(self, pos_edge_index=None, neg_edge_index=None, input=None):
 
         if input is None:
             input = self.getInput().to(self.device)
@@ -85,16 +87,45 @@ class GalModel(torch.nn.Module):
         feat = x
         attr = self.attr(x, self.edge_index)
 
-        attack = self.reverse(x)
-        att = self.attack(attack, self.edge_index)
+        if pos_edge_index is None and neg_edge_index is None:
+            return F.log_softmax(attr, dim=1)
 
-        total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
+        else:
+            attack = self.reverse(x)
+            att = self.attk(attack, self.edge_index)    
+            total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
 
-        x_j = torch.index_select(x, 0, total_edge_index[0])
-        x_i = torch.index_select(x, 0, total_edge_index[1])
-        res = torch.einsum("ef,ef->e", x_i, x_j)
+            x_j = torch.index_select(x, 0, total_edge_index[0])
+            x_i = torch.index_select(x, 0, total_edge_index[1])
+            res = torch.einsum("ef,ef->e", x_i, x_j)
 
-        return res, F.log_softmax(attr, dim=1), att, feat
+            return res, F.log_softmax(attr, dim=1), att, feat        
+
+
+
+    # def forward(self, pos_edge_index, neg_edge_index, input=None):
+
+    #     if input is None:
+    #         input = self.getInput().to(self.device)
+    #     x = torch.matmul(input, self.glove_matrix).to(self.device)
+
+    #     x = F.relu(self.conv1(x, self.edge_index))
+    #     x = self.conv2(x, self.edge_index)
+    #     x = self.conv3(x, self.edge_index)
+
+    #     feat = x
+    #     attr = self.attr(x, self.edge_index)
+
+    #     attack = self.reverse(x)
+    #     att = self.attk(attack, self.edge_index)
+
+    #     total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
+
+    #     x_j = torch.index_select(x, 0, total_edge_index[0])
+    #     x_i = torch.index_select(x, 0, total_edge_index[1])
+    #     res = torch.einsum("ef,ef->e", x_i, x_j)
+
+    #     return res, F.log_softmax(attr, dim=1), att, feat
 
     def getInput(self):
         return torch.cat(self.node_attribute_list, dim=0)

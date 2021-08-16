@@ -45,6 +45,11 @@ def attackSet(attack, approach: Approach, trainset: bool) -> Tuple[torch.Tensor]
 
     # chooses a victim node and attacks it using oneNodeAttack
     attack_results_for_all_attacked_nodes = []
+    # print(attack.model_wrapper.model)
+    # print(type(attack.model_wrapper.model))
+    # print(dir(attack.model_wrapper.model))
+    
+
     attack.model_wrapper.model.attack = True
     model0 = copy.deepcopy(attack.model_wrapper.model)
     for node_num in range(num_attacks):
