@@ -1,3 +1,4 @@
+# from model_functions.gal.Movielens_TV.models import GNN
 from enum import Enum, auto
 from torch import nn
 from typing import List, Optional
@@ -8,6 +9,10 @@ from model_functions.robust_gcn import RobustGCNModel
 from model_functions.modified_rgnn import RGNNModel
 from model_functions.gal.gal_model import GalModel
 
+
+import sys
+sys.path.append("../")
+from rgg.models import CustomNodeModel
 
 class Print(Enum):
     """
@@ -115,6 +120,7 @@ class GNN_TYPE(Enum):
     ROBUST_GCN = auto()
     SGC = auto()
     RGNN = auto()
+    RGNN_RGG = auto() #rgg
     GAL = auto()
 
     @staticmethod
@@ -125,7 +131,7 @@ class GNN_TYPE(Enum):
             raise ValueError()
 
     def is_robust_model(self) -> bool:
-        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN or self is GNN_TYPE.GAL:
+        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN or self is GNN_TYPE.RGNN_RGG or self is GNN_TYPE.GAL:
             return True
         else:
             return False
@@ -166,6 +172,8 @@ class GNN_TYPE(Enum):
             return RGNNModel(dataset=dataset, device=device)
         elif self is GNN_TYPE.GAL:
             return GalModel(dataset=dataset, device=device)
+        elif self is GNN_TYPE.RGNN_RGG:
+            return CustomNodeModel(gnn_type=GNN_TYPE.RGNN_RGG, num_layers=2, dataset=dataset, device=device)
 
     def string(self) -> str:
         """
@@ -191,6 +199,8 @@ class GNN_TYPE(Enum):
             return "RGNN"
         elif self is GNN_TYPE.GAL:
             return "GAL"
+        elif self is GNN_TYPE.RGNN_RGG:
+            return "RGNN_RGG"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list) -> List[str]:

@@ -76,8 +76,8 @@ class ModelWrapper(object):
             self.model = NodeModel(gnn_type, num_layers, dataset, device)
         else:
             self.model = EdgeModel(gnn_type, num_layers, dataset, device)
-        # self.model = CustomNodeModel(gnn_type, num_layers, dataset, device)
-        print("self.model is our model")
+        self.model = CustomNodeModel(gnn_type, num_layers, dataset, device)
+
         # input("wait")
         self.node_model = node_model
         self.patience = patience
@@ -121,7 +121,7 @@ class ModelWrapper(object):
                               attack_epochs=attack_epochs, end='.pt')
 
         file_name = "pretrained_118.pt"
-        file_name = "fuck_you_ron's_mom"
+        # file_name = "fuck_you_ron's_mom"
         model_path = osp.join(folder_name, file_name)
         print(model_path)
 

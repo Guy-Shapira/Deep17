@@ -1,3 +1,6 @@
+import sys
+print(sys.path)
+
 from classes.basic_classes import GNN_TYPE
 from model_functions.basicTrainer import basicTrainer, test
 from model_functions.robust_gcn import train
@@ -8,6 +11,7 @@ from classes.basic_classes import DatasetType
 from model_functions.robust_gcn import RobustGCNModel
 from dataset_functions.graph_dataset import GraphDataset
 from classes.approach_classes import Approach
+
 
 from typing import Tuple
 import os.path as osp
@@ -293,6 +297,7 @@ class ModelWrapper(object):
                 self.model = NodeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
         else:
             self.model = EdgeModel(gnn_type=gnn_type, num_layers=num_layers, dataset=dataset, device=device)
+
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -351,19 +356,27 @@ class ModelWrapper(object):
         file_name = fileNamer(node_model=self.node_model, dataset_name=dataset.name, model_name=model.name,
                               num_layers=model.num_layers, patience=self.patience, seed=self.seed, targeted=targeted,
                               continuous_epochs=continuous_epochs, end='.pt')
+        
+        file_name = "pretrained_118.pt"
         model_path = osp.join(folder_name, file_name)
+        print(model_path)
 
         # load model and optimizer
         if not osp.exists(model_path):
+            input("not exist")
             # train model
             model, model_log, test_acc = self.useTrainer(dataset=dataset, attack=attack)
             torch.save((model.state_dict(), model_log, test_acc), model_path)
         else:
-            model_state_dict, model_log, test_acc = torch.load(model_path)
-            model.load_state_dict(model_state_dict)
-            print(model_log + '\n')
-        self.basic_log = model_log
-        self.clean = test_acc
+            model_state_dict = torch.load(model_path)
+            model.model.load_state_dict(model_state_dict)
+
+
+            # model_state_dict, model_log, test_acc = torch.load(model_path)
+            # model.load_state_dict(model_state_dict)
+            # print(model_log + '\n')
+        # self.basic_log = model_log
+        # self.clean = test_acc
 
     def useTrainer(self, dataset: GraphDataset, attack=None) -> Tuple[Model, str, torch.Tensor]:
         """
