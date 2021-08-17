@@ -1,5 +1,6 @@
 from model_functions.rgnn.models import RGNN
 
+from functools import reduce
 import torch
 
 
