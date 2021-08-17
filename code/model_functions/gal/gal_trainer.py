@@ -43,14 +43,19 @@ def galTrainer(model, data: torch_geometric.data.Data, patience: int):
         test_accuracy: torch.Tensor
     """
 
+    # according to best results reported in GAL paper
     if model.dataset_name == "CITESEER":
         lambda_param = 0.75
-    elif model.dataset_name == "CORA":
+        use_ws_loss = False
+    elif model.dataset_name == "CORA": # default param - nor reported in the paper
         lambda_param = 0.05
+        use_ws_loss = True
     elif model.dataset_name == "PUBMED":
         lambda_param = 0.5
+        use_ws_loss = False
     else:
         lambda_param = 0.05
+        use_ws_loss = True
 
     # Train/validation/test
     data = train_test_split_edges(data)
@@ -66,7 +71,7 @@ def galTrainer(model, data: torch_geometric.data.Data, patience: int):
     switch = True
     for epoch in range(1, train_epochs+1):
 
-        train_accuracy = train(model, (optimizer, optimizer_attack), data, switch)
+        train_accuracy = train(model, (optimizer, optimizer_attack), data, switch, use_ws_loss=use_ws_loss)
         switch = not switch
 
         # Ben's logging
@@ -152,7 +157,8 @@ def _get_link_labels(pos_edge_index, neg_edge_index):
 #     return pos_edge_index.to(device), neg_edge_index.to(device), link_labels.to(device)
 
 # training the current model
-def train(model, optimizers: torch.optim, data: torch_geometric.data.Data, switch):
+def train(model, optimizers: torch.optim, data: torch_geometric.data.Data, switch, 
+    use_ws_loss=True):
     """
         trains the model for one epoch
 
@@ -162,6 +168,7 @@ def train(model, optimizers: torch.optim, data: torch_geometric.data.Data, switc
         optimizer: torch.optim
         data: torch_geometric.data.Data
     """
+
     model.train()
     labels = data.y.to(model.device)
 
@@ -203,12 +210,16 @@ def train(model, optimizers: torch.optim, data: torch_geometric.data.Data, switc
     loss = F.binary_cross_entropy_with_logits(link_logits, link_labels)
 
     # loss 2
-    one_hot = torch.cuda.FloatTensor(attack_prediction.size(0), attack_prediction.size(1)).zero_()
-    mask = one_hot.scatter_(1, labels.view(-1,1), 1)
+    if use_ws_loss: # wasserstein distance VS total variation
+        one_hot = torch.cuda.FloatTensor(attack_prediction.size(0), attack_prediction.size(1)).zero_()
+        mask = one_hot.scatter_(1, labels.view(-1,1), 1)
 
-    nonzero = mask * attack_prediction
-    avg = torch.mean(nonzero, dim = 0)
-    loss2 = torch.abs(torch.max(avg) - torch.min(avg))
+        nonzero = mask * attack_prediction
+        avg = torch.mean(nonzero, dim = 0)
+        loss2 = torch.abs(torch.max(avg) - torch.min(avg))
+    else:
+        loss2 = F.nll_loss(attack_prediction, labels)
+    
 
     link_logits = link_logits.detach().cpu().numpy()
     link_labels = link_labels.detach().cpu().numpy()

@@ -28,20 +28,31 @@ class GradientReversalLayer(torch.nn.Module):
 
 
 class GalModel(torch.nn.Module):
-    def __init__(self, dataset, device, name='GATConv'):
+    def __init__(self, dataset, device):
         super(GalModel, self).__init__()
-        self.dataset_name = dataset.name
+        self.dataset_name = dataset.name.upper()
+        
+        # choosing task performance max results according to paper
+        if self.dataset_name == "PUBMED":
+            name = 'GCNConv'
+        if self.dataset_name == "CITESEER":
+            name = 'GATConv' 
+        if self.dataset_name == "CORA":
+            name = "CORAConv"
+        
+
         if (name == 'GCNConv'):
             self.conv1 = GCNConv(dataset.num_features, 128).to(device)
             self.conv2 = GCNConv(128, 64).to(device)
+            self.conv3 = None
         elif (name == 'GATConv'):
             self.conv1 = GATConv(dataset.num_features, 128).to(device)
             self.conv2 = GATConv(128, 64).to(device)
-
-
-        # self.conv1 = GCNConv(dataset.num_features, 64).to(device)
-        # self.conv2 = GCNConv(64, 64).to(device)
-        # self.conv3 = GCNConv(64, 64).to(device)
+            self.conv3 = None
+        elif name == "CORAConv":
+            self.conv1 = GCNConv(dataset.num_features, 64).to(device)
+            self.conv2 = GCNConv(64, 64).to(device)
+            self.conv3 = GCNConv(64, 64).to(device)
 
         self.layers = torch.nn.ModuleList([self.conv1, self.conv2])
         self.num_layers = len(self.layers)
@@ -99,6 +110,8 @@ class GalModel(torch.nn.Module):
         # x = self.conv3(x, self.edge_index)
         x = F.relu(self.conv1(x, self.edge_index))
         x = self.conv2(x, self.edge_index)
+        if self.conv3 is not None:
+            x = self.conv3(x, self.edge_index)
 
         feat = x
         attr = self.attr(x, self.edge_index)
