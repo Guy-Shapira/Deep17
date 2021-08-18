@@ -7,7 +7,7 @@ from model_functions.modified_gnns import ModifiedGATConv, ModifiedGINConv, Modi
 from model_functions.robust_gcn import RobustGCNModel
 from model_functions.modified_rgnn import RGNNModel
 from model_functions.gal.gal_model import GalModel
-
+from model_functions.lat_gcn.lat_gcn_model import LATGCNModel
 
 class Print(Enum):
     """
@@ -117,6 +117,8 @@ class GNN_TYPE(Enum):
     RGNN = auto()
     GAL = auto()
 
+    LATGCN = auto()
+
     @staticmethod
     def from_string(s):
         try:
@@ -125,7 +127,8 @@ class GNN_TYPE(Enum):
             raise ValueError()
 
     def is_robust_model(self) -> bool:
-        if self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN or self is GNN_TYPE.GAL:
+        if (self is GNN_TYPE.ROBUST_GCN or self is GNN_TYPE.RGNN 
+            or self is GNN_TYPE.GAL or self is GNN_TYPE.LATGCN):
             return True
         else:
             return False
@@ -166,6 +169,8 @@ class GNN_TYPE(Enum):
             return RGNNModel(dataset=dataset, device=device)
         elif self is GNN_TYPE.GAL:
             return GalModel(dataset=dataset, device=device)
+        elif self is GNN_TYPE.LATGCN:
+            return LATGCNModel(dataset=dataset, device=device)
 
     def string(self) -> str:
         """
@@ -191,6 +196,8 @@ class GNN_TYPE(Enum):
             return "RGNN"
         elif self is GNN_TYPE.GAL:
             return "GAL"
+        elif self is GNN_TYPE.LATGCN:
+            return "LATGCN"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list) -> List[str]:

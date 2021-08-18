@@ -18,7 +18,7 @@ import copy
 import numpy as np
 
 from model_functions.gal.gal_trainer import galTrainer
-
+from model_functions.lat_gcn.lat_gcn_trainer import latgcnTrainer
 
 class Model(torch.nn.Module):
     """
@@ -395,6 +395,8 @@ class ModelWrapper(object):
             return self.model, model_log, test_accuracy
         elif self.gnn_type == GNN_TYPE.GAL: #RGG
             return galTrainer(self.model, data, self.patience)
+        elif self.gnn_type == GNN_TYPE.LATGCN: #RGG
+            return latgcnTrainer(self.model, self.optimizer, data, self.patience)
             
 
         return basicTrainer(self.model, self.optimizer, data, self.patience)
