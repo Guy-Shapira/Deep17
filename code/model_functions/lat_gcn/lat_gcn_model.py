@@ -2,6 +2,7 @@ from abc import get_cache_token
 import torch
 from torch_geometric.nn import GCNConv
 import torch.nn.functional as F
+from torch.nn import Dropout
 
 from functools import reduce
 
@@ -11,9 +12,13 @@ class LATGCNModel(torch.nn.Module):
 
         self.device = device
 
-        self.internal_channels = 64
+        self.internal_channels = 128
 
+        dropout_value = 0.2
+
+        self.input_dropout = Dropout(p=dropout_value)
         self.conv1 = GCNConv(dataset.num_features, self.internal_channels).to(self.device)
+        self.h1_dropout = Dropout(p=dropout_value)
         self.conv2 = GCNConv(self.internal_channels, dataset.num_classes).to(self.device)
 
         self.layers = torch.nn.ModuleList([self.conv1, self.conv2])
@@ -65,8 +70,13 @@ class LATGCNModel(torch.nn.Module):
             input = self.getInput().to(self.device)
         x = torch.matmul(input, self.glove_matrix).to(self.device)
 
-        h1 = F.relu(self.conv1(x, self.edge_index))
-        h2 = self.conv2(h1, self.edge_index)
+        x_drop = self.input_dropout(x)
+
+        h1 = F.relu(self.conv1(x_drop, self.edge_index))
+
+        h1_d = self.h1_dropout(h1)
+
+        h2 = self.conv2(h1_d, self.edge_index)
 
         h2 = F.log_softmax(h2, dim=1).to(self.device)
 
@@ -76,7 +86,9 @@ class LATGCNModel(torch.nn.Module):
                 R = self.conv2(perturbation, self.edge_index)
             else:
                 R = self.conv2(perturbation.detach(), self.edge_index)
-            return h2, torch.square(torch.norm(R, p='fro'))
+            # return h2, torch.square(torch.norm(R, p='fro'))
+            return h2, torch.norm(R, p='fro')
+
         else:
             return h2
 
