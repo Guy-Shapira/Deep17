@@ -1,0 +1,16 @@
+#!/bin/bash
+source $HOME/miniconda3/etc/profile.d/conda.sh
+conda activate deep17
+
+python main.py --singleGNN GAL --dataset PUBMED > out_gal_pubmed.txt
+python main.py --singleGNN GAL --dataset CORA > out_gal_cora.txt
+python main.py --singleGNN GAL --dataset CITESEER > out_gal_citeseer.txt
+
+python main.py --singleGNN RGNN --dataset PUBMED > out_rgnn_pubmed.txt
+python main.py --singleGNN RGNN --dataset CORA > out_rgnn_cora.txt
+python main.py --singleGNN RGNN --dataset CITESEER > out_rgnn_citeseer.txt
+
+python main.py --singleGNN LATGCN --dataset PUBMED > out_latgcn_pubmed.txt
+python main.py --singleGNN LATGCN --dataset CORA > out_latgcn_ccora.txt
+python main.py --singleGNN LATGCN --dataset CITESEER > out_latgcn_citeseer.txt
+
